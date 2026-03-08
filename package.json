@@ -1,5 +1,5 @@
 {
-  "name": "fitpal",
+  "name": "forma",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,31 +7,43 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
+    "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:seed": "node --env-file=.env.local scripts/seed-exercises.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:auth": "playwright test tests/setup-auth.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@auth/drizzle-adapter": "^1.11.1",
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.38.0",
+    "framer-motion": "^12.35.1",
     "next": "^15.2.3",
+    "next-auth": "^5.0.0-beta.30",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@clerk/nextjs": "^6.0.0",
-    "@neondatabase/serverless": "^0.10.4",
-    "drizzle-orm": "^0.38.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@playwright/test": "^1.58.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "tailwindcss": "^3.4.17",
-    "postcss": "^8",
     "autoprefixer": "^10.0.1",
+    "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.30.0",
     "eslint": "^8",
-    "eslint-config-next": "^15.2.3"
+    "eslint-config-next": "^15.2.3",
+    "postcss": "^8",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5"
   }
 }

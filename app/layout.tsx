@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import PwaInstaller from "@/components/PwaInstaller";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -10,18 +10,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FitPal",
+  title: "Forma",
   description: "Your intelligent fitness companion.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "FitPal",
+    statusBarStyle: "default",
+    title: "Forma",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#f0f0f0",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -34,12 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className={inter.variable}>
-        <body className="bg-surface text-text-primary antialiased">
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={inter.variable}>
+      <body className="bg-surface text-text-primary antialiased">
+        <PwaInstaller />
+        {children}
+      </body>
+    </html>
   );
 }

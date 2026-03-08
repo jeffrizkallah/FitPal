@@ -8,8 +8,47 @@ import {
   pgEnum,
   uuid,
   jsonb,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import type { AdapterAccount } from "next-auth/adapters";
+
+// ─── NextAuth.js tables (required by Drizzle adapter) ────
+export const authUsers = pgTable("auth_users", {
+  id:            text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name:          text("name"),
+  email:         text("email").unique(),
+  emailVerified: timestamp("email_verified", { mode: "date" }),
+  image:         text("image"),
+  // Hashed password for credentials provider
+  password:      text("password"),
+});
+
+export const accounts = pgTable("accounts", {
+  userId:            text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
+  type:              text("type").$type<AdapterAccount["type"]>().notNull(),
+  provider:          text("provider").notNull(),
+  providerAccountId: text("provider_account_id").notNull(),
+  refresh_token:     text("refresh_token"),
+  access_token:      text("access_token"),
+  expires_at:        integer("expires_at"),
+  token_type:        text("token_type"),
+  scope:             text("scope"),
+  id_token:          text("id_token"),
+  session_state:     text("session_state"),
+}, (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })]);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId:       text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
+  expires:      timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = pgTable("verification_tokens", {
+  identifier: text("identifier").notNull(),
+  token:      text("token").notNull(),
+  expires:    timestamp("expires", { mode: "date" }).notNull(),
+}, (t) => [primaryKey({ columns: [t.identifier, t.token] })]);
 
 // ─── Enums ────────────────────────────────────────────────
 export const goalEnum = pgEnum("goal", [
@@ -48,13 +87,11 @@ export const mealTypeEnum = pgEnum("meal_type", [
   "snack",
 ]);
 
-// ─── Users ────────────────────────────────────────────────
-// clerkId is the primary key — no separate auth table needed
+// ─── Users (app profile — linked to authUsers) ───────────
 export const users = pgTable("users", {
-  clerkId:       text("clerk_id").primaryKey(),
-  email:         text("email").notNull().unique(),
+  id:            text("id").primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
+  // Display name (can differ from auth name)
   name:          text("name"),
-  avatarUrl:     text("avatar_url"),
   // Biometrics
   ageYears:      integer("age_years"),
   heightCm:      real("height_cm"),
@@ -67,6 +104,9 @@ export const users = pgTable("users", {
   targetProteinG: integer("target_protein_g"),
   targetCarbsG:   integer("target_carbs_g"),
   targetFatG:     integer("target_fat_g"),
+  // Saved gym location (for context detection)
+  gymLatitude:   real("gym_latitude"),
+  gymLongitude:  real("gym_longitude"),
   // Onboarding
   onboardingDone: boolean("onboarding_done").default(false),
   createdAt:      timestamp("created_at").defaultNow().notNull(),
@@ -83,13 +123,13 @@ export const exercises = pgTable("exercises", {
   videoUrl:     text("video_url"),          // Cloudinary URL
   imageUrl:     text("image_url"),          // Cloudinary URL
   isCustom:     boolean("is_custom").default(false),
-  createdBy:    text("created_by").references(() => users.clerkId),
+  createdBy:    text("created_by").references(() => users.id),
 });
 
 // ─── Workout Plans ────────────────────────────────────────
 export const workoutPlans = pgTable("workout_plans", {
   id:          uuid("id").defaultRandom().primaryKey(),
-  userId:      text("user_id").notNull().references(() => users.clerkId, { onDelete: "cascade" }),
+  userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name:        text("name").notNull(),
   description: text("description"),
   isActive:    boolean("is_active").default(false),
@@ -108,13 +148,14 @@ export const planExercises = pgTable("plan_exercises", {
   targetReps:   integer("target_reps"),    // null = AMRAP
   targetWeightKg: real("target_weight_kg"),
   restSeconds:  integer("rest_seconds").default(90),
+  dayOfWeek:    integer("day_of_week"),    // 0=Mon…6=Sun, null=unscheduled
   notes:        text("notes"),
 });
 
 // ─── Workout Sessions ─────────────────────────────────────
 export const workoutSessions = pgTable("workout_sessions", {
   id:          uuid("id").defaultRandom().primaryKey(),
-  userId:      text("user_id").notNull().references(() => users.clerkId, { onDelete: "cascade" }),
+  userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   planId:      uuid("plan_id").references(() => workoutPlans.id),
   startedAt:   timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
@@ -139,7 +180,7 @@ export const loggedSets = pgTable("logged_sets", {
 // ─── Meal Logs ────────────────────────────────────────────
 export const mealLogs = pgTable("meal_logs", {
   id:         uuid("id").defaultRandom().primaryKey(),
-  userId:     text("user_id").notNull().references(() => users.clerkId, { onDelete: "cascade" }),
+  userId:     text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   mealType:   mealTypeEnum("meal_type").notNull(),
   loggedAt:   timestamp("logged_at").defaultNow().notNull(),
   imageUrl:   text("image_url"),            // Cloudinary URL of food photo
@@ -156,7 +197,7 @@ export const mealLogs = pgTable("meal_logs", {
 // ─── Daily Summaries (materialized per day) ───────────────
 export const dailySummaries = pgTable("daily_summaries", {
   id:              uuid("id").defaultRandom().primaryKey(),
-  userId:          text("user_id").notNull().references(() => users.clerkId, { onDelete: "cascade" }),
+  userId:          text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   date:            text("date").notNull(),  // "YYYY-MM-DD"
   totalCalories:   integer("total_calories").default(0),
   totalProteinG:   real("total_protein_g").default(0),
@@ -165,10 +206,20 @@ export const dailySummaries = pgTable("daily_summaries", {
   workoutDoneMin:  integer("workout_done_min").default(0),
 });
 
+// ─── Gym Equipment ────────────────────────────────────────
+export const gymEquipment = pgTable("gym_equipment", {
+  id:        uuid("id").defaultRandom().primaryKey(),
+  userId:    text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name:      text("name").notNull(),
+  category:  text("category"),   // 'free_weights' | 'machines' | 'cables' | 'cardio' | 'bodyweight' | 'resistance_bands'
+  notes:     text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Advisor Messages ─────────────────────────────────────
 export const advisorMessages = pgTable("advisor_messages", {
   id:        uuid("id").defaultRandom().primaryKey(),
-  userId:    text("user_id").notNull().references(() => users.clerkId, { onDelete: "cascade" }),
+  userId:    text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role:      text("role").notNull(),        // "user" | "assistant"
   content:   text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -181,10 +232,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   mealLogs:         many(mealLogs),
   dailySummaries:   many(dailySummaries),
   advisorMessages:  many(advisorMessages),
+  gymEquipment:     many(gymEquipment),
 }));
 
 export const workoutPlansRelations = relations(workoutPlans, ({ one, many }) => ({
-  user:     one(users, { fields: [workoutPlans.userId], references: [users.clerkId] }),
+  user:     one(users, { fields: [workoutPlans.userId], references: [users.id] }),
   exercises: many(planExercises),
   sessions:  many(workoutSessions),
 }));
@@ -195,11 +247,11 @@ export const planExercisesRelations = relations(planExercises, ({ one }) => ({
 }));
 
 export const workoutSessionsRelations = relations(workoutSessions, ({ one, many }) => ({
-  user: one(users, { fields: [workoutSessions.userId], references: [users.clerkId] }),
+  user: one(users, { fields: [workoutSessions.userId], references: [users.id] }),
   plan: one(workoutPlans, { fields: [workoutSessions.planId], references: [workoutPlans.id] }),
   sets: many(loggedSets),
 }));
 
 export const mealLogsRelations = relations(mealLogs, ({ one }) => ({
-  user: one(users, { fields: [mealLogs.userId], references: [users.clerkId] }),
+  user: one(users, { fields: [mealLogs.userId], references: [users.id] }),
 }));

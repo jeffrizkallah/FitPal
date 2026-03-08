@@ -5,7 +5,11 @@
 /* ─── Base ─────────────────────────────────────────────── */
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+    --neuo-bg:    #f0f0f0;
+    --neuo-light: #ffffff;
+    --neuo-dark:  #d0d0d0;
+    --neuo-mid:   #d8d8d8;
   }
 
   * {
@@ -13,22 +17,27 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Keyboard focus ring — replaces browser default removed by tap-highlight reset */
+  :focus-visible {
+    outline: 2.5px solid #007AFF;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
   html,
   body {
-    @apply bg-surface text-text-primary font-sans antialiased;
+    background-color: var(--neuo-bg);
+    @apply text-text-primary font-sans antialiased;
     height: 100%;
-    /* Prevent bounce scroll on iOS */
     overscroll-behavior: none;
   }
 
-  /* Remove default input styling */
   input,
   textarea,
   select {
     @apply bg-transparent outline-none;
   }
 
-  /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
@@ -36,46 +45,115 @@
 
 /* ─── Components ────────────────────────────────────────── */
 @layer components {
-  /* Glass card — SystemThinMaterial equivalent */
+
+  /* ── Neumorphic card — primary raised surface */
+  .neuo-card {
+    background-color: var(--neuo-bg);
+    @apply rounded-3xl;
+    box-shadow: 8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light);
+  }
+
+  /* ── Glass → Neumorphic (backward-compat alias) */
   .glass {
-    @apply bg-white/5 backdrop-blur-md border border-border rounded-2xl;
+    background-color: var(--neuo-bg);
+    @apply rounded-3xl;
+    box-shadow: 8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light);
   }
 
   .glass-strong {
-    @apply bg-white/10 backdrop-blur-lg border border-border-strong rounded-2xl;
+    background-color: var(--neuo-bg);
+    @apply rounded-3xl;
+    box-shadow: 10px 10px 20px var(--neuo-dark), -10px -10px 20px var(--neuo-light);
   }
 
-  /* Action button — primary CTA */
+  /* ── Action button — neumorphic raised with action colour */
   .btn-primary {
-    @apply bg-action text-white font-semibold rounded-2xl px-6 py-4
-           text-body transition-all duration-150
-           active:scale-95 active:brightness-90
-           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+    background-color: #007AFF;
+    @apply text-white font-semibold rounded-3xl px-6 py-4 text-body
+           transition-all duration-200 select-none
+           disabled:opacity-40 disabled:cursor-not-allowed;
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.18), -3px -3px 10px rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.01em;
   }
 
-  /* Ghost button */
+  .btn-primary:active:not(:disabled) {
+    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.25), inset -2px -2px 6px rgba(255, 255, 255, 0.15);
+    transform: scale(0.99);
+  }
+
+  /* ── Ghost button — neumorphic raised neutral */
   .btn-ghost {
-    @apply bg-white/8 text-text-primary font-medium rounded-2xl px-6 py-4
-           text-body border border-border transition-all duration-150
-           active:scale-95 active:bg-white/12;
+    background-color: var(--neuo-bg);
+    @apply text-text-primary font-medium rounded-3xl px-6 py-4 text-body
+           transition-all duration-200 select-none;
+    box-shadow: 8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light);
+    letter-spacing: 0.01em;
   }
 
-  /* Input field */
+  .btn-ghost:active {
+    box-shadow: inset 6px 6px 12px var(--neuo-dark), inset -6px -6px 12px var(--neuo-light);
+  }
+
+  /* ── Input field — neumorphic inset (pressed-in look) */
   .input-field {
-    @apply w-full bg-surface-tertiary border border-border rounded-2xl
-           px-4 py-4 text-body text-text-primary placeholder:text-text-tertiary
-           focus:border-action focus:ring-0 transition-colors duration-150;
+    width: 100%;
+    background-color: var(--neuo-bg);
+    @apply rounded-3xl px-5 py-4 text-body text-text-primary
+           placeholder:text-text-tertiary transition-all duration-200;
+    border: none;
+    box-shadow: inset 6px 6px 12px var(--neuo-dark), inset -6px -6px 12px var(--neuo-light);
+    letter-spacing: 0.01em;
   }
 
-  /* Section label */
+  .input-field:focus {
+    outline: none;
+    box-shadow:
+      inset 6px 6px 12px var(--neuo-dark),
+      inset -6px -6px 12px var(--neuo-light),
+      0 0 0 2.5px rgba(0, 122, 255, 0.4);
+  }
+
+  /* ── Section label */
   .section-label {
     @apply text-label text-text-secondary uppercase tracking-widest;
   }
+
+  /* ── Selectable option card (onboarding / settings) */
+  .neuo-option {
+    background-color: var(--neuo-bg);
+    @apply w-full text-left rounded-3xl px-5 py-4 transition-all duration-200 select-none;
+    box-shadow: 6px 6px 12px var(--neuo-mid), -6px -6px 12px var(--neuo-light);
+  }
+
+  .neuo-option:active {
+    box-shadow: inset 4px 4px 8px var(--neuo-mid), inset -4px -4px 8px var(--neuo-light);
+  }
+
+  .neuo-option-selected {
+    background-color: var(--neuo-bg);
+    @apply w-full text-left rounded-3xl px-5 py-4 transition-all duration-200 select-none;
+    box-shadow: inset 5px 5px 10px var(--neuo-mid), inset -5px -5px 10px var(--neuo-light);
+    border-left: 3px solid #007AFF;
+  }
+}
+
+/* ─── Keyframe Animations ───────────────────────────────── */
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40%            { transform: translateY(-5px); opacity: 1; }
+}
+
+@keyframes musclePulse {
+  0%, 100% { opacity: 0.72; }
+  50%       { opacity: 0.32; }
+}
+
+.muscle-highlight {
+  animation: musclePulse 2.4s ease-in-out infinite;
 }
 
 /* ─── Utilities ─────────────────────────────────────────── */
 @layer utilities {
-  /* Safe area insets for mobile */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -84,7 +162,6 @@
     padding-top: env(safe-area-inset-top);
   }
 
-  /* Hide scrollbar but keep scroll */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -92,4 +169,18 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Advisor typing indicator dots */
+  .dot-bounce {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(44, 44, 44, 0.4);
+    animation: dotBounce 1.2s ease-in-out infinite;
+  }
+
+  /* Neumorphic shadow helpers */
+  .shadow-neuo       { box-shadow: 8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light); }
+  .shadow-neuo-sm    { box-shadow: 4px 4px 10px var(--neuo-mid),  -4px -4px 10px var(--neuo-light); }
+  .shadow-neuo-inset { box-shadow: inset 8px 8px 16px var(--neuo-dark), inset -8px -8px 16px var(--neuo-light); }
 }
