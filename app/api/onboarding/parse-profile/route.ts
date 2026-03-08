@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const extraction = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 512,
-    system: `Extract fitness profile data from the user's message. Return ONLY valid JSON, no markdown, no code fences:
+    system: `Extract fitness profile data from the user's message(s). The input may be a single message or multiple messages separated by newlines — combine all of them to find the values. Return ONLY valid JSON, no markdown, no code fences:
 {
   "height_cm": <number or null>,
   "weight_kg": <number or null>,
@@ -80,33 +80,41 @@ export async function POST(req: NextRequest) {
   "user_context": <short string summarising any special needs, injuries, or specific goals mentioned, or "" if none>
 }
 
-Conversion rules:
-- Feet/inches → cm (5'10" = 177.8cm, 6' = 182.9cm)
-- Pounds/lbs → kg (divide by 2.205)
-- "5 10" or "5-10" = 5 feet 10 inches
+CRITICAL — Body weight vs goal amount:
+- "lose 5 kg", "drop 10 lbs", "lose 20 pounds" = a GOAL TARGET, NOT the person's body weight
+- The person's actual body weight is a standalone number with kg/lbs/pounds (e.g. "67kg", "150 lbs", "80 kg")
+- If both appear, take the larger number as the real body weight
+- Example: "67kg, training to lose 5kg" → weight_kg = 67, NOT 5
 
-Goal mapping — always pick the CLOSEST of the four values, never null:
-- lose weight / fat loss / cut / slim / tone / body recomposition → "lose_fat"
+Format rules — fields can appear in any order, separated by spaces, dashes, commas, or slashes:
+- "28 - 174cm - 67kg" → age=28, height=174, weight=67
+- "28/174cm/67kg" → same
+- "174 67 28" (height then weight then age, all plausible) → height=174, weight=67, age=28
+- A bare number 150–220 with no unit = likely height in cm; 40–200 with no unit after height is known = likely weight in kg
+
+Conversion rules:
+- Feet/inches → cm: 5'10" = 177.8cm, 6'0" = 182.9cm, 5'8" = 172.7cm
+- "5 10", "5-10", "5 ft 10" = 5 feet 10 inches
+- lbs / pounds → kg: divide by 2.205
+- st (stone) → kg: multiply by 6.35
+
+Goal mapping — always pick the CLOSEST, never null:
+- lose weight / fat loss / cut / slim / tone / get lean / lose fat / drop weight / lose X kg → "lose_fat"
 - gain muscle / bulk / build mass / get bigger / strength / powerlifting / bodybuilding → "build_muscle"
-- injury rehab / recovering / post-surgery / strengthen specific body part / physical therapy / weak muscles / low back pain / joint pain / senior fitness / elderly / balance / functional fitness / general health → "build_muscle" (use "maintain" if the user explicitly wants no intensity)
-- maintain / stay the same / stay fit / general wellness / not sure → "maintain"
-- endurance / running / cardio / marathon / triathlon / cycling / swimming / sport performance / HIIT → "improve_endurance"
+- injury rehab / recovering / post-surgery / strengthen specific body part / physical therapy / joint pain / general health → "build_muscle" (use "maintain" only if user explicitly wants no intensity)
+- maintain / stay the same / stay fit / general wellness → "maintain"
+- endurance / running / cardio / marathon / cycling / swimming / sport performance → "improve_endurance"
+- "training to be fit" → "build_muscle"
 - If truly ambiguous, default to "build_muscle"
 
 Activity mapping — always pick one, never null:
-- desk job / sedentary / barely move / rarely exercise / very inactive → "sedentary"
-- walk sometimes / light activity / 1-3 days per week / casual exercise → "lightly_active"
-- 3-5 days per week / moderate / regular exercise → "moderately_active"
-- 6-7 days per week / very active / athlete / daily training / physical job → "very_active"
+- sedentary / desk job / barely move / rarely exercise → "sedentary"
+- light / 1-3 days / walk sometimes → "lightly_active"
+- 3-5 days / moderate / regular exercise → "moderately_active"
+- 6-7 days / very active / athlete / daily / physical job → "very_active"
 - If not mentioned, default to "lightly_active"
 
-user_context: Capture any important details the plan should respect, for example:
-- injuries ("left knee ACL surgery 6 months ago")
-- age-related notes ("70 years old, low impact preferred")
-- specific body part goals ("wants to strengthen lower back and glutes")
-- restrictions ("no heavy squats, doctor advised low-impact only")
-- sport-specific goals ("training for a 10k in 3 months")
-- Keep it under 100 characters. Use "" if nothing special.`,
+user_context: capture injuries, restrictions, or specific goals in under 100 chars. "" if nothing special.`,
     messages: [{ role: "user", content: message }],
   });
 

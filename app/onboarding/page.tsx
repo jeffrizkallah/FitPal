@@ -58,6 +58,8 @@ export default function OnboardingPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [userContext, setUserContext] = useState<string>("");
+  // Accumulate all bio attempts so retries always send full context
+  const bioHistory = useRef<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,11 +146,15 @@ export default function OnboardingPage() {
     addUser(text);
     setPhase("processing_bio");
 
+    // Accumulate all attempts so the model always has full context on retries
+    bioHistory.current.push(text);
+    const combinedMessage = bioHistory.current.join("\n");
+
     try {
       const res = await fetch("/api/onboarding/parse-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: combinedMessage }),
       });
       const data = await res.json();
 
