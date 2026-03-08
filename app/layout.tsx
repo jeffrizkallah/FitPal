@@ -34,7 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} style={{ colorScheme: "light", backgroundColor: "#f0f0f0" }}>
+      <head>
+        <meta name="color-scheme" content="light" />
+      </head>
       <body className="bg-surface text-text-primary antialiased">
         <PwaInstaller />
         {children}
