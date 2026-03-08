@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ─────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    @apply bg-surface text-text-primary font-sans antialiased;
+    height: 100%;
+    /* Prevent bounce scroll on iOS */
+    overscroll-behavior: none;
+  }
+
+  /* Remove default input styling */
+  input,
+  textarea,
+  select {
+    @apply bg-transparent outline-none;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ─── Components ────────────────────────────────────────── */
+@layer components {
+  /* Glass card — SystemThinMaterial equivalent */
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-border rounded-2xl;
+  }
+
+  .glass-strong {
+    @apply bg-white/10 backdrop-blur-lg border border-border-strong rounded-2xl;
+  }
+
+  /* Action button — primary CTA */
+  .btn-primary {
+    @apply bg-action text-white font-semibold rounded-2xl px-6 py-4
+           text-body transition-all duration-150
+           active:scale-95 active:brightness-90
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply bg-white/8 text-text-primary font-medium rounded-2xl px-6 py-4
+           text-body border border-border transition-all duration-150
+           active:scale-95 active:bg-white/12;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full bg-surface-tertiary border border-border rounded-2xl
+           px-4 py-4 text-body text-text-primary placeholder:text-text-tertiary
+           focus:border-action focus:ring-0 transition-colors duration-150;
+  }
+
+  /* Section label */
+  .section-label {
+    @apply text-label text-text-secondary uppercase tracking-widest;
+  }
+}
+
+/* ─── Utilities ─────────────────────────────────────────── */
+@layer utilities {
+  /* Safe area insets for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Hide scrollbar but keep scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
