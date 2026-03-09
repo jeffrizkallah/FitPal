@@ -65,7 +65,17 @@ export default async function WorkoutPage() {
       {/* Header */}
       <div className="mb-8">
         <p className="section-label mb-1">Train</p>
-        <h1 className="text-title">This Week</h1>
+        <h1 className="text-title" style={{ letterSpacing: "-0.03em" }}>
+          This Week
+        </h1>
+        {currentPlan && (
+          <p
+            className="text-label text-text-secondary mt-1 truncate"
+            style={{ letterSpacing: "0.005em", maxWidth: "80%" }}
+          >
+            {currentPlan.name}
+          </p>
+        )}
       </div>
 
       {currentPlan ? (

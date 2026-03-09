@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-09 (Bug fixes + feature additions: fixed next-week plan validation bug, added text meal entry + AI macro estimation, editable calorie targets on profile, expanded advisor tools: replace/add/remove exercise, improved onboarding with workout frequency + tailored questions, fixed onboarding photo upload with separate gallery button)
+> Last Updated: 2026-03-09 (Phase 2 user-requested features: set tracking buttons in expanded exercise panel with auto-done on completion, elapsed stopwatch in active workout header, cleaned up train page title area, day pill completion checkmark, weight tracking per exercise with previous weight recall)
 
 ---
 
@@ -43,8 +43,11 @@
 | :--- | :---: | :--- |
 | Exercise library (seeded in Neon DB) | ✅ | 32 exercises across all muscle groups. Run: npm run db:seed. No video assets yet (Phase 6). |
 | Workout plan builder (AI-generated or manual) | ✅ | /workout/plan/new — exercise picker + sets/reps editor + day-of-week assignment (M-S buttons). |
-| Weekly Train view — day accordion | ✅ | /workout — 7 day pills, expand day → see exercises. Tap circle to complete (localStorage). Chevron shows muscle SVG + instructions. |
-| Exercise completion (tap-to-done) | ✅ | Per-day localStorage key. Completion resets each calendar day automatically. |
+| Weekly Train view — day accordion | ✅ | /workout — 7 day pills, expand day → see exercises. Tap circle to complete (localStorage). Chevron shows muscle SVG + instructions. Day pills show checkmark when all exercises complete. |
+| Exercise completion (tap-to-done) | ✅ | Per-day localStorage key. Set buttons in expanded panel (N buttons per exercise) auto-mark exercise done when all sets tapped. Manual circle toggle still works. |
+| Per-exercise weight tracking | ✅ | Weight input in expanded panel. Saves to localStorage per exercise. Shows previous session's weight as hint and delta vs last. |
+| Elapsed stopwatch in active workout | ✅ | Neuo pill stopwatch in top-right of ActiveWorkout header. Counts up from session startedAt. |
+| Train page title cleanup | ✅ | Plan name shown as small subtitle under "This Week". No more crowded double-heading. |
 | Muscle diagram SVGs per exercise | ✅ | Inline SVG human silhouette with highlighted region per muscle group (WeeklyPlanView component). |
 | dayOfWeek column on plan_exercises | ✅ | Schema updated, db:push run. 0=Mon…6=Sun, null=unscheduled. |
 | Active workout screen — single-exercise focus view | ⏸ | Deferred — old flow retained at /workout/active but not surfaced in main UI anymore. |

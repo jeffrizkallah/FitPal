@@ -56,7 +56,9 @@ export default function ActiveWorkout({ sessionId }: { sessionId: string }) {
   const [isFinishing, setIsFinishing] = useState(false);
   const [restTimeLeft, setRestTimeLeft] = useState<number>(-1);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch session on mount + register as active in context
   useEffect(() => {
@@ -73,6 +75,16 @@ export default function ActiveWorkout({ sessionId }: { sessionId: string }) {
     return () => workoutCtx.endSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  // Elapsed workout timer
+  useEffect(() => {
+    if (!session) return;
+    const start = new Date(session.startedAt).getTime();
+    const update = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    update();
+    elapsedRef.current = setInterval(update, 1000);
+    return () => { if (elapsedRef.current) clearInterval(elapsedRef.current); };
+  }, [session?.startedAt]);
 
   // Rest timer countdown
   useEffect(() => {
@@ -178,6 +190,14 @@ export default function ActiveWorkout({ sessionId }: { sessionId: string }) {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const formatElapsed = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   if (!session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -217,18 +237,42 @@ export default function ActiveWorkout({ sessionId }: { sessionId: string }) {
           <p className="section-label">
             Exercise {currentIdx + 1} of {totalExercises}
           </p>
-          <button
-            onClick={finishWorkout}
-            disabled={isFinishing}
-            aria-busy={isFinishing}
-            className="text-label text-text-secondary px-3 py-1 rounded-2xl transition-all duration-200"
-            style={{
-              backgroundColor: "var(--neuo-bg)",
-              boxShadow: "3px 3px 6px var(--neuo-mid), -3px -3px 6px var(--neuo-light)",
-            }}
-          >
-            {isFinishing ? "Finishing..." : "Finish"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Stopwatch */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl"
+              style={{
+                backgroundColor: "var(--neuo-bg)",
+                boxShadow: "3px 3px 6px var(--neuo-mid), -3px -3px 6px var(--neuo-light)",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="13" r="8" stroke="#007AFF" strokeWidth="1.75" />
+                <path d="M12 9v4l2.5 2.5" stroke="#007AFF" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 2h6" stroke="#007AFF" strokeWidth="1.75" strokeLinecap="round" />
+                <path d="M12 2v3" stroke="#007AFF" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+              <span
+                className="text-label font-semibold"
+                style={{ color: "#007AFF", fontVariantNumeric: "tabular-nums" }}
+              >
+                {formatElapsed(elapsed)}
+              </span>
+            </div>
+            {/* Finish */}
+            <button
+              onClick={finishWorkout}
+              disabled={isFinishing}
+              aria-busy={isFinishing}
+              className="text-label text-text-secondary px-3 py-1.5 rounded-2xl transition-all duration-200"
+              style={{
+                backgroundColor: "var(--neuo-bg)",
+                boxShadow: "3px 3px 6px var(--neuo-mid), -3px -3px 6px var(--neuo-light)",
+              }}
+            >
+              {isFinishing ? "Finishing..." : "Finish"}
+            </button>
+          </div>
         </div>
         {/* Progress track */}
         <div
