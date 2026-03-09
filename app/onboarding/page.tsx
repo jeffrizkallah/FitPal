@@ -33,7 +33,7 @@ interface DayPlan {
 // ─── Script ────────────────────────────────────────────────
 
 const MSG_GREETING =
-  "Forma is online. I'll build your first week in about 60 seconds. Tell me your age, height, weight, and what you're training for. Whatever that means for you: losing fat, gaining muscle, recovering from an injury, training for a race, strengthening a specific area. Anything works.";
+  "Forma is online. I'll build your first week in about 60 seconds. Give me a bit of info so the plan is actually tailored to you: \n\n1. Age, height, weight\n2. Your main goal; lose fat, build muscle, maintain, endurance, or something specific like recovering from an injury or training for a race\n3. How many days per week you want to train; be honest, there's no wrong answer\n4. Your current activity level; sedentary, lightly active, moderately active, or very active\n5. Anything else I should know; injuries, areas you want to focus on, things you want to avoid\n\nThrow it all in one message, however you want to write it.";
 
 const MSG_EQUIPMENT =
   "Logged. Now, the environment scan. Send a photo of your gym and I'll identify the equipment so you don't have to manually check boxes for every cable machine and dumbbell rack in the building. This is optional, most useful if you have limited equipment or train at home. Skip it if you're at a fully-equipped commercial gym.";
@@ -58,11 +58,13 @@ export default function OnboardingPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [userContext, setUserContext] = useState<string>("");
+  const [workoutsPerWeek, setWorkoutsPerWeek] = useState<number | null>(null);
   // Accumulate all bio attempts so retries always send full context
   const bioHistory = useRef<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelTyping = useRef<(() => void) | null>(null);
@@ -165,6 +167,7 @@ export default function OnboardingPage() {
         setPhase("awaiting_bio");
       } else {
         if (data.userContext) setUserContext(data.userContext);
+        if (data.workoutsPerWeek) setWorkoutsPerWeek(data.workoutsPerWeek);
         await typeMessage(MSG_EQUIPMENT);
         setPhase("awaiting_equip");
       }
@@ -238,7 +241,7 @@ export default function OnboardingPage() {
     const res = await fetch("/api/onboarding/generate-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userContext }),
+      body: JSON.stringify({ userContext, workoutsPerWeek }),
     });
     const data = await res.json();
 
@@ -389,12 +392,25 @@ export default function OnboardingPage() {
                           "6px 6px 12px var(--neuo-mid), -6px -6px 12px var(--neuo-light)",
                       }}
                     >
-                      {imagePreview ? "Change Photo" : "Take / Upload Photo"}
+                      {imagePreview ? "Retake" : "Take Photo"}
+                    </button>
+
+                    <button
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="flex-1 py-3.5 rounded-3xl font-medium text-text-primary"
+                      style={{
+                        fontSize: "14px",
+                        backgroundColor: "var(--neuo-bg)",
+                        boxShadow:
+                          "6px 6px 12px var(--neuo-mid), -6px -6px 12px var(--neuo-light)",
+                      }}
+                    >
+                      Upload
                     </button>
 
                     <button
                       onClick={handleSkipEquip}
-                      className="flex-1 py-3.5 rounded-3xl font-medium text-text-secondary"
+                      className="py-3.5 px-4 rounded-3xl font-medium text-text-secondary"
                       style={{
                         fontSize: "14px",
                         backgroundColor: "var(--neuo-bg)",
@@ -415,11 +431,20 @@ export default function OnboardingPage() {
                     </button>
                   )}
 
+                  {/* Camera input */}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                  {/* Gallery input (no capture) */}
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
                     className="hidden"
                     onChange={handleImageChange}
                   />
@@ -549,6 +574,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : "none",
           letterSpacing: "0.005em",
           borderRadius: isAI ? "4px 20px 20px 20px" : "20px 4px 20px 20px",
+          whiteSpace: "pre-wrap",
         }}
       >
         {message.content}

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Step = "camera" | "analyzing" | "confirm" | "saving";
+type Mode = "photo" | "text";
 
 interface MealForm {
   name: string;
@@ -33,6 +34,7 @@ export default function NutritionLogPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [mode, setMode] = useState<Mode>("photo");
   const [step, setStep] = useState<Step>("camera");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -51,6 +53,8 @@ export default function NutritionLogPage() {
     fatG: "",
     refinement: "",
   });
+  const [textDescription, setTextDescription] = useState("");
+  const [isEstimating, setIsEstimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ── File selection ────────────────────────────────────────
@@ -73,7 +77,7 @@ export default function NutritionLogPage() {
     reader.readAsDataURL(file);
   }
 
-  // ── Analyze (initial or refinement) ──────────────────────
+  // ── Analyze image ─────────────────────────────────────────
   async function analyze(refinement?: string) {
     if (!imageBase64) return;
     setError(null);
@@ -107,6 +111,41 @@ export default function NutritionLogPage() {
     } catch {
       setError("Could not analyze the image. Please try again.");
       setStep(imageBase64 ? "confirm" : "camera");
+    }
+  }
+
+  // ── Estimate from text ────────────────────────────────────
+  async function estimateFromText() {
+    if (!textDescription.trim()) return;
+    setIsEstimating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/nutrition/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: textDescription }),
+      });
+
+      if (!res.ok) throw new Error("Estimation failed");
+
+      const data = await res.json();
+      setForm({
+        name: data.name ?? textDescription,
+        mealType: data.mealType ?? "lunch",
+        calories: String(data.calories ?? ""),
+        proteinG: String(data.proteinG ?? ""),
+        carbsG: String(data.carbsG ?? ""),
+        fatG: String(data.fatG ?? ""),
+        refinement: "",
+      });
+      setStep("confirm");
+    } catch {
+      setError("Could not estimate macros. You can fill them in manually.");
+      setForm((f) => ({ ...f, name: textDescription }));
+      setStep("confirm");
+    } finally {
+      setIsEstimating(false);
     }
   }
 
@@ -147,6 +186,7 @@ export default function NutritionLogPage() {
         onClick={() => {
           if (step === "confirm") {
             setStep("camera");
+            setMode("photo");
           } else {
             router.back();
           }
@@ -166,7 +206,7 @@ export default function NutritionLogPage() {
         <span className="text-body font-medium">Back</span>
       </button>
 
-      {/* ── CAMERA STEP ── */}
+      {/* ── MODE SELECTOR (only on camera/text step) ── */}
       {(step === "camera" || step === "analyzing") && (
         <>
           <div className="mb-6">
@@ -176,152 +216,246 @@ export default function NutritionLogPage() {
             </h1>
           </div>
 
-          {/* Preview / placeholder */}
+          {/* Photo / Text toggle */}
           <div
-            className="w-full"
+            className="flex rounded-3xl p-1 mb-5"
             style={{
-              aspectRatio: "4/3",
-              borderRadius: "2rem",
-              backgroundColor: "var(--neuo-bg)",
+              background: "var(--neuo-bg)",
               boxShadow:
-                "inset 8px 8px 16px var(--neuo-dark), inset -8px -8px 16px var(--neuo-light)",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+                "inset 4px 4px 8px var(--neuo-mid), inset -4px -4px 8px var(--neuo-light)",
             }}
           >
-            {imagePreview ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={imagePreview}
-                alt="Food preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-3">
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={iconWellStyle}
-                >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M23 19C23 19.53 22.79 20.04 22.41 20.41C22.04 20.79 21.53 21 21 21H3C2.47 21 1.96 20.79 1.59 20.41C1.21 20.04 1 19.53 1 19V8C1 7.47 1.21 6.96 1.59 6.59C1.96 6.21 2.47 6 3 6H7L9 3H15L17 6H21C21.53 6 22.04 6.21 22.41 6.59C22.79 6.96 23 7.47 23 8V19Z"
-                      stroke="#007AFF"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx="12"
-                      cy="13"
-                      r="4"
-                      stroke="#007AFF"
-                      strokeWidth="1.75"
-                    />
-                  </svg>
-                </div>
-                <p className="text-label text-text-secondary">
-                  Take or upload a photo
-                </p>
-              </div>
-            )}
+            {(["photo", "text"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setError(null); }}
+                className="flex-1 py-2.5 rounded-3xl font-medium transition-all duration-200"
+                style={{
+                  fontSize: 14,
+                  color: mode === m ? "#007AFF" : "rgba(44,44,44,0.45)",
+                  background: mode === m ? "var(--neuo-bg)" : "transparent",
+                  boxShadow:
+                    mode === m
+                      ? "4px 4px 10px var(--neuo-mid), -4px -4px 10px var(--neuo-light)"
+                      : "none",
+                  fontWeight: mode === m ? 600 : 500,
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {m === "photo" ? "Photo" : "Type it"}
+              </button>
+            ))}
           </div>
 
-          {/* Scanning progress bar — shown only while analyzing */}
-          {step === "analyzing" ? (
-            <div className="mt-4 mb-6">
+          {/* ── PHOTO MODE ── */}
+          {mode === "photo" && (
+            <>
+              {/* Preview / placeholder */}
               <div
-                className="w-full h-1.5 rounded-full overflow-hidden"
+                className="w-full"
                 style={{
+                  aspectRatio: "4/3",
+                  borderRadius: "2rem",
                   backgroundColor: "var(--neuo-bg)",
                   boxShadow:
-                    "inset 2px 2px 4px var(--neuo-mid), inset -2px -2px 4px var(--neuo-light)",
+                    "inset 8px 8px 16px var(--neuo-dark), inset -8px -8px 16px var(--neuo-light)",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                <style>{`
-                  @keyframes scan {
-                    0%   { transform: translateX(-100%); }
-                    100% { transform: translateX(500%); }
-                  }
-                `}</style>
-                <div
-                  style={{
-                    width: "20%",
-                    height: "100%",
-                    borderRadius: "9999px",
-                    backgroundColor: "#007AFF",
-                    animation: "scan 1.4s ease-in-out infinite",
-                  }}
-                />
+                {imagePreview ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={imagePreview}
+                    alt="Food preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                      style={iconWellStyle}
+                    >
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M23 19C23 19.53 22.79 20.04 22.41 20.41C22.04 20.79 21.53 21 21 21H3C2.47 21 1.96 20.79 1.59 20.41C1.21 20.04 1 19.53 1 19V8C1 7.47 1.21 6.96 1.59 6.59C1.96 6.21 2.47 6 3 6H7L9 3H15L17 6H21C21.53 6 22.04 6.21 22.41 6.59C22.79 6.96 23 7.47 23 8V19Z"
+                          stroke="#007AFF"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx="12"
+                          cy="13"
+                          r="4"
+                          stroke="#007AFF"
+                          strokeWidth="1.75"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-label text-text-secondary">
+                      Take or upload a photo
+                    </p>
+                  </div>
+                )}
               </div>
-              <p
-                className="text-label text-text-secondary mt-2 text-center"
-                style={{ letterSpacing: "0.02em" }}
-              >
-                Identifying food
-              </p>
-            </div>
-          ) : (
-            <div className="mb-6" />
-          )}
 
-          {error && (
-            <p className="text-label text-center mb-4" style={{ color: "#FF3B30" }}>
-              {error}
-            </p>
-          )}
-
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {/* Actions */}
-          {step !== "analyzing" && (
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="btn-primary w-full"
-              >
-                {imagePreview ? "Retake Photo" : "Take Photo"}
-              </button>
-
-              {imagePreview && (
-                <button
-                  onClick={() => analyze()}
-                  className="btn-primary w-full"
-                >
-                  Analyze Meal
-                </button>
+              {/* Scanning progress bar */}
+              {step === "analyzing" ? (
+                <div className="mt-4 mb-6">
+                  <div
+                    className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{
+                      backgroundColor: "var(--neuo-bg)",
+                      boxShadow:
+                        "inset 2px 2px 4px var(--neuo-mid), inset -2px -2px 4px var(--neuo-light)",
+                    }}
+                  >
+                    <style>{`
+                      @keyframes scan {
+                        0%   { transform: translateX(-100%); }
+                        100% { transform: translateX(500%); }
+                      }
+                    `}</style>
+                    <div
+                      style={{
+                        width: "20%",
+                        height: "100%",
+                        borderRadius: "9999px",
+                        backgroundColor: "#007AFF",
+                        animation: "scan 1.4s ease-in-out infinite",
+                      }}
+                    />
+                  </div>
+                  <p
+                    className="text-label text-text-secondary mt-2 text-center"
+                    style={{ letterSpacing: "0.02em" }}
+                  >
+                    Identifying food
+                  </p>
+                </div>
+              ) : (
+                <div className="mb-6" />
               )}
 
-              <button
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.removeAttribute("capture");
-                    fileInputRef.current.click();
-                    // restore after
-                    setTimeout(
-                      () =>
-                        fileInputRef.current?.setAttribute(
-                          "capture",
-                          "environment"
-                        ),
-                      500
-                    );
-                  }
+              {error && (
+                <p className="text-label text-center mb-4" style={{ color: "#FF3B30" }}>
+                  {error}
+                </p>
+              )}
+
+              {/* Hidden file inputs */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {/* Actions */}
+              {step !== "analyzing" && (
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-primary w-full"
+                  >
+                    {imagePreview ? "Retake Photo" : "Take Photo"}
+                  </button>
+
+                  {imagePreview && (
+                    <button
+                      onClick={() => analyze()}
+                      className="btn-primary w-full"
+                    >
+                      Analyze Meal
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.removeAttribute("capture");
+                        fileInputRef.current.click();
+                        setTimeout(
+                          () =>
+                            fileInputRef.current?.setAttribute(
+                              "capture",
+                              "environment"
+                            ),
+                          500
+                        );
+                      }
+                    }}
+                    className="btn-ghost w-full"
+                  >
+                    Upload from Library
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── TEXT MODE ── */}
+          {mode === "text" && step !== "analyzing" && (
+            <>
+              <div
+                className="rounded-3xl p-5 mb-5"
+                style={{
+                  background: "var(--neuo-bg)",
+                  boxShadow:
+                    "inset 6px 6px 12px var(--neuo-dark), inset -6px -6px 12px var(--neuo-light)",
                 }}
-                className="btn-ghost w-full"
               >
-                Upload from Library
-              </button>
-            </div>
+                <textarea
+                  className="w-full bg-transparent resize-none outline-none"
+                  style={{
+                    fontSize: 16,
+                    color: "#2c2c2c",
+                    lineHeight: 1.6,
+                    letterSpacing: "0.005em",
+                    minHeight: 100,
+                    fontFamily: "inherit",
+                  }}
+                  placeholder="e.g. grilled chicken breast with rice and broccoli, medium portion"
+                  value={textDescription}
+                  onChange={(e) => setTextDescription(e.target.value)}
+                  rows={4}
+                  autoFocus
+                />
+              </div>
+
+              {error && (
+                <p className="text-label text-center mb-4" style={{ color: "#FF3B30" }}>
+                  {error}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={estimateFromText}
+                  disabled={!textDescription.trim() || isEstimating}
+                  className="btn-primary w-full"
+                  style={{ opacity: isEstimating ? 0.6 : 1 }}
+                >
+                  {isEstimating ? "Estimating..." : "Estimate Macros"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setForm((f) => ({ ...f, name: textDescription }));
+                    setStep("confirm");
+                  }}
+                  disabled={!textDescription.trim()}
+                  className="btn-ghost w-full"
+                >
+                  Enter Manually
+                </button>
+              </div>
+            </>
           )}
         </>
       )}
@@ -334,8 +468,8 @@ export default function NutritionLogPage() {
             <h1 className="text-title">Confirm Meal</h1>
           </div>
 
-          {/* Image thumbnail */}
-          {imagePreview && (
+          {/* Image thumbnail (photo mode only) */}
+          {imagePreview && mode === "photo" && (
             <div
               className="w-full mb-6"
               style={{
@@ -426,20 +560,22 @@ export default function NutritionLogPage() {
             </div>
           </div>
 
-          {/* Semantic refinement */}
-          <div className="mb-6">
-            <p className="section-label mb-2">Refine (optional)</p>
-            <input
-              className="input-field"
-              value={form.refinement}
-              onChange={(e) => setForm({ ...form, refinement: e.target.value })}
-              placeholder="e.g. Add a side of ranch dressing"
-            />
-          </div>
+          {/* Refinement (photo mode only) */}
+          {mode === "photo" && (
+            <div className="mb-6">
+              <p className="section-label mb-2">Refine (optional)</p>
+              <input
+                className="input-field"
+                value={form.refinement}
+                onChange={(e) => setForm({ ...form, refinement: e.target.value })}
+                placeholder="e.g. Add a side of ranch dressing"
+              />
+            </div>
+          )}
 
           {/* Actions */}
-          <div className="flex flex-col gap-3">
-            {form.refinement && (
+          <div className="flex flex-col gap-3" style={{ marginTop: mode === "text" ? "1.5rem" : 0 }}>
+            {mode === "photo" && form.refinement && (
               <button
                 onClick={() => analyze(form.refinement)}
                 className="btn-ghost w-full"

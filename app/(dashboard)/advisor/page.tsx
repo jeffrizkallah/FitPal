@@ -77,9 +77,15 @@ export default function AdvisorPage() {
   // Load message history on mount
   useEffect(() => {
     fetch("/api/advisor/messages")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         if (Array.isArray(data)) setMessages(data);
+      })
+      .catch((err) => {
+        console.error("Failed to load advisor history:", err);
       })
       .finally(() => setIsLoadingHistory(false));
   }, []);

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { signOutAction } from "@/lib/auth-actions";
 import GymLocationButton from "@/components/profile/GymLocationButton";
+import EditableTargets from "@/components/profile/EditableTargets";
 
 const GOAL_LABELS: Record<string, string> = {
   lose_fat: "Lose Fat",
@@ -143,49 +144,12 @@ export default async function ProfilePage() {
 
       {/* Nutrition Targets */}
       {user && user.targetCalories && (
-        <div className="neuo-card rounded-4xl p-5 space-y-3">
-          <p
-            className="section-label"
-            style={{ fontSize: 11, color: "rgba(44,44,44,0.45)" }}
-          >
-            Daily Targets
-          </p>
-          <div className="flex gap-2">
-            {[
-              { label: "Cal", value: user.targetCalories },
-              { label: "Protein", value: `${user.targetProteinG}g` },
-              { label: "Carbs", value: `${user.targetCarbsG}g` },
-              { label: "Fat", value: `${user.targetFatG}g` },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="flex-1 rounded-3xl px-2 py-3 flex flex-col items-center"
-                style={{
-                  background: "var(--neuo-bg)",
-                  boxShadow:
-                    "inset 4px 4px 8px var(--neuo-mid), inset -4px -4px 8px var(--neuo-light)",
-                }}
-              >
-                <p
-                  className="font-bold"
-                  style={{ color: "#007AFF", fontSize: 15, letterSpacing: "-0.01em" }}
-                >
-                  {value}
-                </p>
-                <p
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(44,44,44,0.4)",
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <EditableTargets
+          targetCalories={user.targetCalories}
+          targetProteinG={user.targetProteinG ?? 0}
+          targetCarbsG={user.targetCarbsG ?? 0}
+          targetFatG={user.targetFatG ?? 0}
+        />
       )}
 
       {/* Settings */}

@@ -277,11 +277,12 @@ RULES (follow all):
     return NextResponse.json({ error: "Failed to generate plan" }, { status: 500 });
   }
 
-  // Validate day count matches current plan structure
-  if (!Array.isArray(plan.days) || plan.days.length !== distinctDayCount) {
-    console.error(
-      `Next-plan day count mismatch: expected ${distinctDayCount}, got ${plan.days?.length}`
-    );
+  // Validate we got at least some training days back
+  const returnedTrainingDays = Array.isArray(plan.days)
+    ? plan.days.filter((d) => Array.isArray(d.exercises) && d.exercises.length > 0).length
+    : 0;
+  if (returnedTrainingDays === 0) {
+    console.error(`Next-plan returned no training days (expected ~${distinctDayCount})`);
     return NextResponse.json({ error: "Failed to generate plan" }, { status: 500 });
   }
 

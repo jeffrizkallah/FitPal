@@ -72,9 +72,12 @@ export async function POST(req: NextRequest) {
 
   // Optional freeform context from the user's own description (passed from onboarding)
   let userContext = "";
+  let workoutsPerWeek: number | null = null;
   try {
     const body = await req.json().catch(() => ({}));
-    userContext = typeof body.userContext === "string" ? body.userContext.slice(0, 200) : "";
+    userContext = typeof body.userContext === "string" ? body.userContext.slice(0, 300) : "";
+    const wpw = body.workoutsPerWeek;
+    if (typeof wpw === "number" && wpw >= 1 && wpw <= 7) workoutsPerWeek = wpw;
   } catch {
     // no body is fine
   }
@@ -112,11 +115,15 @@ export async function POST(req: NextRequest) {
   const expDesc =
     experienceDescriptions[user.activityLevel ?? ""] ?? "intermediate";
 
+  const trainingDays = workoutsPerWeek ?? (user.activityLevel === "sedentary" ? 3 : user.activityLevel === "lightly_active" ? 3 : user.activityLevel === "moderately_active" ? 4 : 5);
+  const restDays = 7 - trainingDays;
+
   const prompt = `Design a 7-day workout plan for:
 - Goal: ${goalDesc}
 - Experience: ${expDesc}
 - Weight: ${user.weightKg ?? 75}kg
-- Available equipment: ${equipmentList}${userContext ? `\n- Special notes: ${userContext}` : ""}
+- Available equipment: ${equipmentList}
+- Training days per week: ${trainingDays} (rest days: ${restDays})${userContext ? `\n- Special notes: ${userContext}` : ""}
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
@@ -141,8 +148,8 @@ Return ONLY valid JSON (no markdown, no explanation):
 
 Rules:
 - day_index: 0=Monday through 6=Sunday
-- Include 2-3 rest or active recovery days (exercises: [])
-- Training days: 4-6 exercises per session
+- Include exactly ${restDays} rest or active recovery days (exercises: []), spread across the week
+- Training days: 4-6 exercises per session, tailored to the specific goal and focus areas mentioned
 - muscle_group must be one of: chest, back, shoulders, biceps, triceps, forearms, core, glutes, quads, hamstrings, calves, full_body
 - Only use equipment from the available list
 - Volume guidelines:
@@ -153,7 +160,8 @@ Rules:
 - Beginner: 3 sets max, compound movements first
 - Advanced: 4-5 sets, include isolation work
 - Select exercises appropriate for the available equipment
-- If special notes mention an injury or restriction, avoid exercises that stress that area and substitute safer alternatives`;
+- If special notes mention injuries, restrictions, or focus areas, design the plan around those specifically
+- Distribute muscle groups intelligently across the training days to avoid overtraining the same muscle two days in a row`;
 
 
   const response = await client.messages.create({

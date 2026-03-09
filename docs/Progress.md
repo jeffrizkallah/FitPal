@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-08 (AI Chat Onboarding: replaced 4-step form with scripted AI chat. New routes: /api/onboarding/parse-profile, /api/onboarding/generate-plan. Handoff animation + haptic double-pulse. Auto-generates week 1 plan on signup.)
+> Last Updated: 2026-03-09 (Bug fixes + feature additions: fixed next-week plan validation bug, added text meal entry + AI macro estimation, editable calorie targets on profile, expanded advisor tools: replace/add/remove exercise, improved onboarding with workout frequency + tailored questions, fixed onboarding photo upload with separate gallery button)
 
 ---
 

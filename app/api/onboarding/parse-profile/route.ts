@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
   "age_years": <number or null>,
   "goal": <"lose_fat" | "build_muscle" | "maintain" | "improve_endurance">,
   "activity_level": <"sedentary" | "lightly_active" | "moderately_active" | "very_active">,
-  "user_context": <short string summarising any special needs, injuries, or specific goals mentioned, or "" if none>
+  "workouts_per_week": <integer 1-7 or null if not mentioned>,
+  "user_context": <short string summarising any special needs, injuries, focus areas, preferences, or specific goals mentioned, or "" if none>
 }
 
 CRITICAL — Body weight vs goal amount:
@@ -124,6 +125,7 @@ user_context: capture injuries, restrictions, or specific goals in under 100 cha
     age_years: number | null;
     goal: string;
     activity_level: string;
+    workouts_per_week: number | null;
     user_context: string;
   };
 
@@ -207,6 +209,7 @@ user_context: capture injuries, restrictions, or specific goals in under 100 cha
   return NextResponse.json({
     success: true,
     userContext: profile.user_context ?? "",
+    workoutsPerWeek: profile.workouts_per_week ?? null,
     profile: {
       heightCm: profile.height_cm,
       weightKg: profile.weight_kg,

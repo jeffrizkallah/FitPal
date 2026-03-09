@@ -11,7 +11,7 @@ import {
   exercises,
   gymEquipment,
 } from "@/db/schema";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, ilike } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
@@ -63,6 +63,72 @@ const ADVISOR_TOOLS: Anthropic.Tool[] = [
         target_carbs_g: { type: "integer", description: "New daily carbs target in grams" },
         target_fat_g: { type: "integer", description: "New daily fat target in grams" },
       },
+    },
+  },
+  {
+    name: "replace_exercise",
+    description:
+      "Swap an exercise in the user's plan with a different one. Use when the user asks to change a specific exercise to another. Finds or creates the replacement exercise in the database.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        plan_exercise_id: {
+          type: "string",
+          description: "The ID of the plan exercise entry to replace (from the plan listed in context)",
+        },
+        new_exercise_name: {
+          type: "string",
+          description: "Name of the replacement exercise",
+        },
+        muscle_group: {
+          type: "string",
+          description: "Muscle group for the new exercise (chest, back, shoulders, biceps, triceps, forearms, core, glutes, quads, hamstrings, calves, full_body)",
+        },
+        equipment: {
+          type: "string",
+          description: "Equipment needed for the new exercise (e.g. barbell, dumbbell, cable, bodyweight)",
+        },
+      },
+      required: ["plan_exercise_id", "new_exercise_name", "muscle_group"],
+    },
+  },
+  {
+    name: "add_exercise",
+    description:
+      "Add a new exercise to the user's active workout plan on a specific day. Use when the user asks to add an exercise to their plan.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        exercise_name: { type: "string", description: "Name of the exercise to add" },
+        muscle_group: {
+          type: "string",
+          description: "Muscle group (chest, back, shoulders, biceps, triceps, forearms, core, glutes, quads, hamstrings, calves, full_body)",
+        },
+        equipment: { type: "string", description: "Equipment needed (e.g. dumbbell, barbell, bodyweight)" },
+        day_of_week: {
+          type: "integer",
+          description: "Day index: 0=Monday, 1=Tuesday, ..., 6=Sunday",
+        },
+        target_sets: { type: "integer", description: "Number of sets (default 3)" },
+        target_reps: { type: "integer", description: "Number of reps per set (default 10)" },
+        rest_seconds: { type: "integer", description: "Rest between sets in seconds (default 90)" },
+      },
+      required: ["exercise_name", "muscle_group", "day_of_week"],
+    },
+  },
+  {
+    name: "remove_exercise",
+    description:
+      "Remove an exercise from the user's active workout plan. Use when the user asks to drop or remove a specific exercise.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        plan_exercise_id: {
+          type: "string",
+          description: "The ID of the plan exercise entry to remove (from the plan listed in context)",
+        },
+      },
+      required: ["plan_exercise_id"],
     },
   },
 ];
@@ -121,6 +187,126 @@ async function executeTool(
     await db.update(users).set(updates).where(eq(users.id, userId));
 
     return { success: true, message: "Macro targets updated successfully." };
+  }
+
+  if (name === "replace_exercise") {
+    const { plan_exercise_id, new_exercise_name, muscle_group, equipment } = input as {
+      plan_exercise_id: string;
+      new_exercise_name: string;
+      muscle_group: string;
+      equipment?: string;
+    };
+
+    const VALID_MUSCLE_GROUPS = [
+      "chest","back","shoulders","biceps","triceps","forearms","core",
+      "glutes","quads","hamstrings","calves","full_body",
+    ] as const;
+    type MuscleGroup = typeof VALID_MUSCLE_GROUPS[number];
+    const mg: MuscleGroup = VALID_MUSCLE_GROUPS.includes(muscle_group as MuscleGroup)
+      ? (muscle_group as MuscleGroup)
+      : "full_body";
+
+    // Find or create the replacement exercise
+    const existing = await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(ilike(exercises.name, new_exercise_name))
+      .limit(1);
+
+    let exerciseId: string;
+    if (existing.length > 0) {
+      exerciseId = existing[0].id;
+    } else {
+      const [newEx] = await db
+        .insert(exercises)
+        .values({ name: new_exercise_name, muscleGroup: mg, equipment: equipment ?? null, isCustom: false })
+        .returning();
+      exerciseId = newEx.id;
+    }
+
+    await db
+      .update(planExercises)
+      .set({ exerciseId })
+      .where(eq(planExercises.id, plan_exercise_id));
+
+    return { success: true, message: `Exercise replaced with ${new_exercise_name}.` };
+  }
+
+  if (name === "add_exercise") {
+    const { exercise_name, muscle_group, equipment, day_of_week, target_sets, target_reps, rest_seconds } = input as {
+      exercise_name: string;
+      muscle_group: string;
+      equipment?: string;
+      day_of_week: number;
+      target_sets?: number;
+      target_reps?: number;
+      rest_seconds?: number;
+    };
+
+    const VALID_MUSCLE_GROUPS = [
+      "chest","back","shoulders","biceps","triceps","forearms","core",
+      "glutes","quads","hamstrings","calves","full_body",
+    ] as const;
+    type MuscleGroup = typeof VALID_MUSCLE_GROUPS[number];
+    const mg: MuscleGroup = VALID_MUSCLE_GROUPS.includes(muscle_group as MuscleGroup)
+      ? (muscle_group as MuscleGroup)
+      : "full_body";
+
+    // Find the user's active plan
+    const [activePlan] = await db
+      .select({ id: workoutPlans.id })
+      .from(workoutPlans)
+      .where(eq(workoutPlans.userId, userId))
+      .orderBy(desc(workoutPlans.createdAt))
+      .limit(1);
+
+    if (!activePlan) return { success: false, message: "No active plan found." };
+
+    // Find max orderIndex for the day
+    const dayExercises = await db
+      .select({ orderIndex: planExercises.orderIndex })
+      .from(planExercises)
+      .where(eq(planExercises.planId, activePlan.id));
+
+    const maxOrder = dayExercises.reduce((max, e) => Math.max(max, e.orderIndex ?? 0), 0);
+
+    // Find or create exercise
+    const existing = await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(ilike(exercises.name, exercise_name))
+      .limit(1);
+
+    let exerciseId: string;
+    if (existing.length > 0) {
+      exerciseId = existing[0].id;
+    } else {
+      const [newEx] = await db
+        .insert(exercises)
+        .values({ name: exercise_name, muscleGroup: mg, equipment: equipment ?? null, isCustom: false })
+        .returning();
+      exerciseId = newEx.id;
+    }
+
+    await db.insert(planExercises).values({
+      planId: activePlan.id,
+      exerciseId,
+      orderIndex: maxOrder + 1,
+      targetSets: target_sets ?? 3,
+      targetReps: target_reps ?? 10,
+      restSeconds: rest_seconds ?? 90,
+      dayOfWeek: day_of_week,
+    });
+
+    return { success: true, message: `${exercise_name} added to the plan.` };
+  }
+
+  if (name === "remove_exercise") {
+    const { plan_exercise_id } = input as { plan_exercise_id: string };
+
+    await db.delete(planExercises).where(eq(planExercises.id, plan_exercise_id));
+
+    return { success: true, message: "Exercise removed from plan." };
   }
 
   return { success: false, message: "Unknown tool." };
@@ -235,7 +421,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `You are a professional fitness advisor. Be direct, concise, and data-driven. No motivational filler. No exclamation marks. Never use em-dashes (—) in your responses. Give specific, actionable advice backed by the user's actual data.
 
-You have tools to update the user's workout plan and macro targets. Use them only when the user explicitly requests changes.
+You have tools to fully edit the user's workout plan and nutrition targets. Use them when the user asks. You can: update sets/reps/weight/rest for any exercise, swap an exercise for a different one, add a new exercise to any day, remove an exercise, and adjust calorie/macro targets.
 
 User Profile:
 - Name: ${user?.name ?? "Unknown"}
