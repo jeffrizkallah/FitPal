@@ -426,6 +426,128 @@ export default function AdvisorPage() {
   );
 }
 
+// ── Inline markdown renderer ─────────────────────────────
+function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*(.+?)\*\*/g;
+  let last = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    parts.push(<strong key={match.index} style={{ fontWeight: 700 }}>{match[1]}</strong>);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderMarkdown(content: string): React.ReactNode {
+  const lines = content.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table block — collect consecutive | lines (skip separator rows)
+    if (line.trimStart().startsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trimStart().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const rows = tableLines.filter((l) => !/^\s*\|[\s\-:|]+\|\s*$/.test(l));
+      if (rows.length > 0) {
+        const header = rows[0].split("|").map((c) => c.trim()).filter(Boolean);
+        const body = rows.slice(1);
+        nodes.push(
+          <div key={`table-${i}`} style={{ overflowX: "auto", marginTop: 8, marginBottom: 8 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {header.map((cell, ci) => (
+                    <th
+                      key={ci}
+                      style={{
+                        padding: "6px 8px",
+                        textAlign: "left",
+                        fontWeight: 600,
+                        color: "#2c2c2c",
+                        borderBottom: "1px solid var(--neuo-mid)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {renderInline(cell)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {body.map((row, ri) => {
+                  const cells = row.split("|").map((c) => c.trim()).filter(Boolean);
+                  return (
+                    <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)" }}>
+                      {cells.map((cell, ci) => (
+                        <td
+                          key={ci}
+                          style={{
+                            padding: "5px 8px",
+                            color: "#2c2c2c",
+                            borderBottom: "1px solid rgba(208,208,208,0.4)",
+                          }}
+                        >
+                          {renderInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // Bullet list — collect consecutive - lines
+    if (/^[\-\*] /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[\-\*] /.test(lines[i])) {
+        items.push(lines[i].replace(/^[\-\*] /, ""));
+        i++;
+      }
+      nodes.push(
+        <ul key={`ul-${i}`} style={{ margin: "6px 0", paddingLeft: 18 }}>
+          {items.map((item, idx) => (
+            <li key={idx} style={{ marginBottom: 3, color: "#2c2c2c", lineHeight: 1.55, fontSize: 15 }}>
+              {renderInline(item)}
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Blank line
+    if (line.trim() === "") {
+      nodes.push(<div key={`br-${i}`} style={{ height: 8 }} />);
+      i++;
+      continue;
+    }
+
+    // Normal paragraph line
+    nodes.push(
+      <p key={`p-${i}`} style={{ margin: 0, fontSize: 15, color: "#2c2c2c", lineHeight: 1.65, letterSpacing: "0.005em" }}>
+        {renderInline(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <>{nodes}</>;
+}
+
 function MessageBubble({
   message,
   showTypingIndicator,
@@ -464,7 +586,7 @@ function MessageBubble({
               />
             ))}
           </div>
-        ) : (
+        ) : isUser ? (
           <p
             style={{
               margin: 0,
@@ -477,6 +599,10 @@ function MessageBubble({
           >
             {message.content}
           </p>
+        ) : (
+          <div style={{ fontSize: 15, color: "#2c2c2c" }}>
+            {renderMarkdown(message.content)}
+          </div>
         )}
       </div>
     </div>

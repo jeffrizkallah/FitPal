@@ -80,7 +80,7 @@ export default async function WorkoutPage() {
 
       {currentPlan ? (
         <>
-          <WeeklyPlanView exercises={planExs} planName={currentPlan.name} />
+          <WeeklyPlanView exercises={planExs} planName={currentPlan.name} planId={currentPlan.id} />
 
           {/* Plan actions */}
           <div className="mt-8 flex flex-col gap-3">

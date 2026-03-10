@@ -15,15 +15,17 @@ active.
 - **Done** In the onboarding when i can only take a photo i cannot upload a photo
 
 ## Phase 2:
-- If the exercise is 4 sets 10 reps, add 4 buttons vertically in the extended menu of the exercise to keep track of which set you’re on then when the 4 sets are done it regesters the exercise as done
-- Add a cool looking stopwatch in the top right corner to start and end the workout 
-- Fix title area in the top of the train page (week 1: Push/Pull/Legs....) it looks crowded and too messy
-- When you fully complete a weekdays workout it should somehow show me in the pills up where all the weekdays are 
-- Let the user mark the weight in the extended details of the exercise to progress every day and week (it shows previous weight next time so you don’t have to memorise them)
+- **Done** If the exercise is 4 sets 10 reps, add 4 buttons vertically in the extended menu of the exercise to keep track of which set you’re on then when the 4 sets are done it regesters the exercise as done
+- **Done** Add a cool looking stopwatch in the top right corner to start and end the workout 
+- **Done** Fix title area in the top of the train page (week 1: Push/Pull/Legs....) it looks crowded and too messy
+- **Done** When you fully complete a weekdays workout it should somehow show me in the pills up where all the weekdays are 
+- **Done** Let the user mark the weight in the extended details of the exercise to progress every day and week (it shows previous weight next time so you don’t have to memorise them)
 
 ## Phase 3:
-- Make the lines rings in the home page a bit thinner and maybe make the design of it similar to the style of the icons near the Ask advisor, log meal, workout cards
-- Sometimes wehn i log a meal it doesnt record
-- Sometimes wehn i refresh the app the details in the homepage arent up to date
-- Check Advisor screenshot chats for issues that need fixing 
-- Its telling me no workout loged in the home page even though i logged the first day of the weeks workout
+- **Done** Make the lines rings in the home page a bit thinner and maybe make the design of it similar to the style of the icons near the Ask advisor, log meal, workout cards
+- **Done** Sometimes wehn i log a meal it doesnt record
+- **Done** Sometimes wehn i refresh the app the details in the homepage arent up to date
+- **Done** Check Advisor screenshot chats for issues that need fixing
+- **Done** the advidor is telling me no workout logged in the home page even though i logged the first day of the weeks workout
+- **Done** The data should update or refresh everyday (i open the app today and it had the calories from yesterday)
+- **Done** Yesterday i completed all the exersices fro monday and when i go to the train page it shows me that they werent tapped or they werent completed

@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
       aiRawData?: object;
     };
 
+  // Validate required fields
+  if (!name || typeof calories !== "number" || isNaN(calories) ||
+      typeof proteinG !== "number" || isNaN(proteinG) ||
+      typeof carbsG !== "number" || isNaN(carbsG) ||
+      typeof fatG !== "number" || isNaN(fatG)) {
+    return NextResponse.json({ error: "Invalid meal data" }, { status: 400 });
+  }
+
   const [meal] = await db
     .insert(mealLogs)
     .values({

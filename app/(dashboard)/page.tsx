@@ -1,8 +1,10 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users, authUsers, dailySummaries, workoutSessions } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 import MacroRing from "@/components/dashboard/MacroRing";
 import NudgesSection from "@/components/advisor/NudgesSection";
 import ContextualQuickStart from "@/components/dashboard/ContextualQuickStart";
@@ -11,11 +13,15 @@ export default async function HomePage() {
   const session = await auth();
   const userId = session!.user!.id!;
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   // Parallelize all DB queries for performance
   const [userRows, authUserRows, summaryRows, sessionRows] = await Promise.all([
     db.select().from(users).where(eq(users.id, userId)).limit(1),
     db.select({ name: authUsers.name }).from(authUsers).where(eq(authUsers.id, userId)).limit(1),
-    db.select().from(dailySummaries).where(eq(dailySummaries.userId, userId)).limit(1),
+    db.select().from(dailySummaries)
+      .where(and(eq(dailySummaries.userId, userId), eq(dailySummaries.date, todayStr)))
+      .limit(1),
     db
       .select({ completedAt: workoutSessions.completedAt, durationMin: workoutSessions.durationMin })
       .from(workoutSessions)

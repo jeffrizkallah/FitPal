@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ExerciseLottie from "@/components/workout/ExerciseLottie";
 
 export type DayExercise = {
@@ -17,6 +17,7 @@ export type DayExercise = {
 type Props = {
   exercises: DayExercise[];
   planName: string;
+  planId?: string;
 };
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -71,14 +72,22 @@ function getTodayIndex() {
   return js === 0 ? 6 : js - 1;
 }
 
-function todayStorageKey() {
-  const d = new Date();
-  return `forma-done-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+function getISOWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-function setsStorageKey() {
+// Weekly keys — completion persists for the whole week, resets on new week
+function weekDoneKey() {
   const d = new Date();
-  return `forma-sets-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  return `forma-done-${d.getFullYear()}-w${getISOWeek(d)}`;
+}
+
+function weekSetsKey() {
+  const d = new Date();
+  return `forma-sets-${d.getFullYear()}-w${getISOWeek(d)}`;
 }
 
 function lastWeightKey(exerciseId: string) {
@@ -91,7 +100,7 @@ function todayWeightKey(exerciseId: string) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function WeeklyPlanView({ exercises }: Props) {
+export default function WeeklyPlanView({ exercises, planId }: Props) {
   const todayIdx = getTodayIndex();
   const [activeDay, setActiveDay] = useState(todayIdx);
   const [expandedEx, setExpandedEx] = useState<string | null>(null);
@@ -99,13 +108,14 @@ export default function WeeklyPlanView({ exercises }: Props) {
   const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
   const [weights, setWeights] = useState<Record<string, string>>({});
   const [lastWeights, setLastWeights] = useState<Record<string, string>>({});
+  const quickLoggedRef = useRef(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(todayStorageKey());
+      const raw = localStorage.getItem(weekDoneKey());
       if (raw) setDone(new Set(JSON.parse(raw) as string[]));
 
-      const setsRaw = localStorage.getItem(setsStorageKey());
+      const setsRaw = localStorage.getItem(weekSetsKey());
       if (setsRaw) setCompletedSets(JSON.parse(setsRaw) as Record<string, boolean[]>);
 
       const weightsObj: Record<string, string> = {};
@@ -121,12 +131,29 @@ export default function WeeklyPlanView({ exercises }: Props) {
     } catch {}
   }, [exercises]);
 
+  // Fire quick-log when today's workout becomes fully complete
+  const todayExercises = exercises.filter((e) => e.dayOfWeek === todayIdx);
+  useEffect(() => {
+    if (
+      todayExercises.length > 0 &&
+      todayExercises.every((e) => done.has(e.planExId)) &&
+      !quickLoggedRef.current
+    ) {
+      quickLoggedRef.current = true;
+      fetch("/api/workouts/quick-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      }).catch(() => {});
+    }
+  }, [done, todayExercises, planId]);
+
   function toggleDone(planExId: string) {
     setDone((prev) => {
       const next = new Set(prev);
       if (next.has(planExId)) next.delete(planExId);
       else next.add(planExId);
-      try { localStorage.setItem(todayStorageKey(), JSON.stringify([...next])); } catch {}
+      try { localStorage.setItem(weekDoneKey(), JSON.stringify([...next])); } catch {}
       return next;
     });
   }
@@ -138,14 +165,14 @@ export default function WeeklyPlanView({ exercises }: Props) {
       while (newArr.length < totalSets) newArr.push(false);
       newArr[setIdx] = !newArr[setIdx];
       const next = { ...prev, [planExId]: newArr };
-      try { localStorage.setItem(setsStorageKey(), JSON.stringify(next)); } catch {}
+      try { localStorage.setItem(weekSetsKey(), JSON.stringify(next)); } catch {}
 
       const allDone = newArr.slice(0, totalSets).every(Boolean);
       setDone((prevDone) => {
         const newDone = new Set(prevDone);
         if (allDone) newDone.add(planExId);
         else newDone.delete(planExId);
-        try { localStorage.setItem(todayStorageKey(), JSON.stringify([...newDone])); } catch {}
+        try { localStorage.setItem(weekDoneKey(), JSON.stringify([...newDone])); } catch {}
         return newDone;
       });
 

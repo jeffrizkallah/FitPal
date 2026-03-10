@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-09 (Phase 2 user-requested features: set tracking buttons in expanded exercise panel with auto-done on completion, elapsed stopwatch in active workout header, cleaned up train page title area, day pill completion checkmark, weight tracking per exercise with previous weight recall)
+> Last Updated: 2026-03-10 (Phase 3 bug fixes: MacroRing thinner rings, home page daily summary now filters by today's date + force-dynamic, meal log API input validation, advisor markdown rendering (bold/tables/lists), workout completion persists weekly via ISO-week localStorage keys, quick-log API creates DB session when day complete so advisor nudges update correctly)
 
 ---
 
