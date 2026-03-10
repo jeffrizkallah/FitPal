@@ -53,24 +53,8 @@ export default function NudgesSection() {
                   : "6px 6px 12px var(--neuo-dark), -6px -6px 12px var(--neuo-light)",
               background: "var(--neuo-bg)",
               textDecoration: "none",
-              position: "relative",
-              overflow: "hidden",
             }}
           >
-            {nudge.severity === "warning" && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 3,
-                  background: "#FF9500",
-                  borderRadius: "24px 0 0 24px",
-                }}
-              />
-            )}
-
             <div
               aria-hidden="true"
               style={{

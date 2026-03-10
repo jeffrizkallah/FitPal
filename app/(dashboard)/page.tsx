@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import MacroRing from "@/components/dashboard/MacroRing";
 import NudgesSection from "@/components/advisor/NudgesSection";
 import ContextualQuickStart from "@/components/dashboard/ContextualQuickStart";
+import PageRefresher from "@/components/PageRefresher";
 
 export default async function HomePage() {
   const session = await auth();
@@ -46,6 +47,7 @@ export default async function HomePage() {
 
   return (
     <div className="px-6 pt-12 animate-fade-in">
+      <PageRefresher />
       <div className="flex items-end justify-between mb-8">
         <div>
           <p className="text-label text-text-secondary mb-1">{greeting}</p>

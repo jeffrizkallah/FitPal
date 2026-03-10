@@ -4,6 +4,7 @@ import { users, mealLogs, dailySummaries } from "@/db/schema";
 import { and, asc, eq, gte, lt } from "drizzle-orm";
 import Link from "next/link";
 import MealList from "@/components/nutrition/MealList";
+import PageRefresher from "@/components/PageRefresher";
 
 export default async function NutritionPage() {
   const session = await auth();
@@ -81,6 +82,7 @@ export default async function NutritionPage() {
 
   return (
     <div className="px-6 pt-12 pb-32 animate-fade-in">
+      <PageRefresher />
       {/* Header */}
       <div className="mb-8">
         <p className="section-label mb-1">Fuel</p>

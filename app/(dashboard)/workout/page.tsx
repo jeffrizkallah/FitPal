@@ -5,6 +5,7 @@ import { eq, desc, asc, and } from "drizzle-orm";
 import Link from "next/link";
 import WeeklyPlanView from "@/components/workout/WeeklyPlanView";
 import GenerateNextPlanButton from "@/components/workout/GenerateNextPlanButton";
+import PageRefresher from "@/components/PageRefresher";
 
 export default async function WorkoutPage() {
   const session = await auth();
@@ -62,6 +63,7 @@ export default async function WorkoutPage() {
 
   return (
     <div className="px-6 pt-12 pb-32 animate-fade-in">
+      <PageRefresher />
       {/* Header */}
       <div className="mb-8">
         <p className="section-label mb-1">Train</p>
