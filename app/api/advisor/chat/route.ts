@@ -11,10 +11,12 @@ import {
   exercises,
   gymEquipment,
 } from "@/db/schema";
-import { eq, desc, asc, ilike } from "drizzle-orm";
+import { and, eq, desc, asc, gte, ilike } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
+
+const DAILY_MESSAGE_LIMIT = 10;
 
 const GOAL_LABELS: Record<string, string> = {
   lose_fat: "lose fat",
@@ -326,6 +328,29 @@ export async function POST(req: NextRequest) {
     return new Response("Missing message", { status: 400 });
   }
 
+  // Only use today's messages — chat resets daily and keeps context window small
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  // Rate limit: count user messages sent today BEFORE saving the new one
+  const todayUserMessages = await db
+    .select({ id: advisorMessages.id })
+    .from(advisorMessages)
+    .where(
+      and(
+        eq(advisorMessages.userId, userId),
+        eq(advisorMessages.role, "user"),
+        gte(advisorMessages.createdAt, todayStart)
+      )
+    );
+
+  if (todayUserMessages.length >= DAILY_MESSAGE_LIMIT) {
+    return new Response(
+      JSON.stringify({ error: "daily_limit", remaining: 0 }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   // Fetch all context in parallel
   const [user, recentSummaries, recentSessions, history, activePlanRows, equipment] =
     await Promise.all([
@@ -347,10 +372,16 @@ export async function POST(req: NextRequest) {
         .where(eq(workoutSessions.userId, userId))
         .orderBy(desc(workoutSessions.startedAt))
         .limit(5),
+      // Today's messages only — keeps context small and resets daily
       db
         .select()
         .from(advisorMessages)
-        .where(eq(advisorMessages.userId, userId))
+        .where(
+          and(
+            eq(advisorMessages.userId, userId),
+            gte(advisorMessages.createdAt, todayStart)
+          )
+        )
         .orderBy(asc(advisorMessages.createdAt))
         .limit(20),
       // Active plan + exercises

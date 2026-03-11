@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 
+const DAILY_MESSAGE_LIMIT = 10;
+
 type Message = {
   id?: string;
   role: "user" | "assistant";
@@ -71,8 +73,13 @@ export default function AdvisorPage() {
   const [input, setInput] = useState("");
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Count how many user messages were sent today
+  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const messagesRemaining = Math.max(0, DAILY_MESSAGE_LIMIT - userMessageCount);
 
   // Load message history on mount
   useEffect(() => {
@@ -97,7 +104,7 @@ export default function AdvisorPage() {
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || isSending) return;
+    if (!text || isSending || dailyLimitReached || messagesRemaining <= 0) return;
 
     const userMsg: Message = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
@@ -113,6 +120,19 @@ export default function AdvisorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
       });
+
+      if (res.status === 429) {
+        setDailyLimitReached(true);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: `You've reached today's limit of ${DAILY_MESSAGE_LIMIT} messages. The advisor resets at midnight.`,
+          };
+          return updated;
+        });
+        return;
+      }
 
       if (!res.body) throw new Error("No response body");
 
@@ -143,7 +163,7 @@ export default function AdvisorPage() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending]);
+  }, [input, isSending, dailyLimitReached, messagesRemaining]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -160,7 +180,7 @@ export default function AdvisorPage() {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }
 
-  const canSend = input.trim().length > 0 && !isSending;
+  const canSend = input.trim().length > 0 && !isSending && !dailyLimitReached && messagesRemaining > 0;
   const isStreaming = isSending && messages.length > 0 && messages[messages.length - 1].role === "assistant";
 
   return (
@@ -354,73 +374,107 @@ export default function AdvisorPage() {
 
       {/* ── Input area ── */}
       <div style={{ padding: "8px 16px calc(88px + env(safe-area-inset-bottom))", flexShrink: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-end",
-            padding: "10px 12px 10px 16px",
-            borderRadius: 28,
-            boxShadow:
-              "inset 5px 5px 10px var(--neuo-mid), inset -5px -5px 10px var(--neuo-light)",
-            background: "var(--neuo-bg)",
-          }}
-        >
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
-            rows={1}
+        {/* Daily limit reached banner */}
+        {(dailyLimitReached || messagesRemaining === 0) ? (
+          <div
             style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              resize: "none",
-              fontSize: 16,
-              color: "#2c2c2c",
-              letterSpacing: "0.005em",
-              lineHeight: 1.5,
-              fontFamily: "inherit",
-              paddingTop: 5,
-              paddingBottom: 5,
-              overflowY: "hidden",
-            }}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!canSend}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: canSend ? "#007AFF" : "var(--neuo-bg)",
-              border: "none",
-              cursor: canSend ? "pointer" : "default",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              boxShadow: canSend
-                ? "4px 4px 10px rgba(0,122,255,0.3), -2px -2px 8px rgba(255,255,255,0.8)"
-                : "4px 4px 10px var(--neuo-mid), -4px -4px 10px var(--neuo-light)",
-              transition: "all 0.2s",
-              marginBottom: 1,
+              textAlign: "center",
+              padding: "12px 16px",
+              borderRadius: 24,
+              background: "var(--neuo-bg)",
+              boxShadow: "inset 4px 4px 8px var(--neuo-mid), inset -4px -4px 8px var(--neuo-light)",
+              marginBottom: 0,
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 20V4M5 11l7-7 7 7"
-                stroke={canSend ? "white" : "rgba(44,44,44,0.3)"}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <p style={{ margin: 0, fontSize: 13, color: "rgba(44,44,44,0.5)", letterSpacing: "0.02em" }}>
+              Daily limit reached. Resets at midnight.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Remaining messages counter */}
+            {!isLoadingHistory && userMessageCount > 0 && (
+              <p
+                style={{
+                  fontSize: 11,
+                  color: messagesRemaining <= 3 ? "rgba(255,59,48,0.7)" : "rgba(44,44,44,0.35)",
+                  letterSpacing: "0.04em",
+                  textAlign: "right",
+                  marginBottom: 6,
+                }}
+              >
+                {messagesRemaining} of {DAILY_MESSAGE_LIMIT} messages remaining today
+              </p>
+            )}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-end",
+                padding: "10px 12px 10px 16px",
+                borderRadius: 28,
+                boxShadow:
+                  "inset 5px 5px 10px var(--neuo-mid), inset -5px -5px 10px var(--neuo-light)",
+                background: "var(--neuo-bg)",
+              }}
+            >
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask anything..."
+                rows={1}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  resize: "none",
+                  fontSize: 16,
+                  color: "#2c2c2c",
+                  letterSpacing: "0.005em",
+                  lineHeight: 1.5,
+                  fontFamily: "inherit",
+                  paddingTop: 5,
+                  paddingBottom: 5,
+                  overflowY: "hidden",
+                }}
               />
-            </svg>
-          </button>
-        </div>
+              <button
+                onClick={sendMessage}
+                disabled={!canSend}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: canSend ? "#007AFF" : "var(--neuo-bg)",
+                  border: "none",
+                  cursor: canSend ? "pointer" : "default",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  boxShadow: canSend
+                    ? "4px 4px 10px rgba(0,122,255,0.3), -2px -2px 8px rgba(255,255,255,0.8)"
+                    : "4px 4px 10px var(--neuo-mid), -4px -4px 10px var(--neuo-light)",
+                  transition: "all 0.2s",
+                  marginBottom: 1,
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 20V4M5 11l7-7 7 7"
+                    stroke={canSend ? "white" : "rgba(44,44,44,0.3)"}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-11 (Phase 4: fixed stale data (PageRefresher refreshes on mount + force-dynamic on nutrition page + router.refresh() after save), fixed macro ring number overlapping circles (reduced font size + max-width constraint), added saved/frequent meals feature (savedMeals DB table, /api/nutrition/saved routes, saved meal quick-select + delete on log page, save-as-frequent toggle on confirm step))
+> Last Updated: 2026-03-11 (Phase 4: fixed stale data (PageRefresher refreshes on mount + force-dynamic on nutrition page + router.refresh() after save), fixed macro ring number overlapping circles (reduced font size + max-width constraint), added saved/frequent meals feature (savedMeals DB table, /api/nutrition/saved routes, saved meal quick-select + delete on log page, save-as-frequent toggle on confirm step). Advisor: daily chat reset (messages filtered to today in GET + Claude context), 10 msg/day rate limit with 429 guard, remaining count + limit banner in UI)
 
 ---
 
