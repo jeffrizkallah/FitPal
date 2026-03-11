@@ -35,3 +35,10 @@ active.
 - **Done** The number in the main page is over lapping the circles (look screenshot)
 - **Done** When I log a food it doesn’t show I have to click out of the page then click back in for it to update (sometimes I have to do this multiple times) or click on the button that redirects me to that page multiple times
 - **Done** In the Food page be able to save a frequent meal so you can just select it next time
+
+## Phase 5
+- so currently I have the web app bookmarked on my iPhone so that it becomes an app on my homepage of my iPhone. The current logo for that app is a black background 
+   with an F for Forma in white. I would like to change that logo. I want the background of that logo to be like the white/grey we've been using throughout the      
+  whole app, and I would like to have a depth to it, similar to the square next to log my meal with a green icon in the middle, but without the green icon. Instead        of the green icon, I would want to have an F, and the F would be a neomorphic style F using similar depths like we're using in the lines in the main dashboard for 
+   the calorie and the protein and the carbs. I want the overall logo of the app to have a neomorphic design.I want to make sure that you understood exactly what I        want, and keep in mind that this is a bookmarked web app. It's not actually an app from the App Store, so after you finish designing that, I would want to know    
+  how I can change the logo. When I bookmarked it, it would show that new logo, not the old one.
