@@ -12,6 +12,9 @@ export default function PageRefresher() {
   const router = useRouter();
 
   useEffect(() => {
+    // Refresh on mount so navigating back always shows fresh data
+    router.refresh();
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         router.refresh();

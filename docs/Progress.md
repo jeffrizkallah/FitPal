@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-10 (Phase 3 bug fixes: MacroRing thinner rings, home page daily summary now filters by today's date + force-dynamic, meal log API input validation, advisor markdown rendering (bold/tables/lists), workout completion persists weekly via ISO-week localStorage keys, quick-log API creates DB session when day complete so advisor nudges update correctly)
+> Last Updated: 2026-03-11 (Phase 4: fixed stale data (PageRefresher refreshes on mount + force-dynamic on nutrition page + router.refresh() after save), fixed macro ring number overlapping circles (reduced font size + max-width constraint), added saved/frequent meals feature (savedMeals DB table, /api/nutrition/saved routes, saved meal quick-select + delete on log page, save-as-frequent toggle on confirm step))
 
 ---
 

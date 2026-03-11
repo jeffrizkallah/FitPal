@@ -29,3 +29,9 @@ active.
 - **Done** the advidor is telling me no workout logged in the home page even though i logged the first day of the weeks workout
 - **Done** The data should update or refresh everyday (i open the app today and it had the calories from yesterday)
 - **Done** Yesterday i completed all the exersices fro monday and when i go to the train page it shows me that they werent tapped or they werent completed
+
+## Phase 4;
+- **Done** Still have issues with the page not loading the updated data, I have to click another page then click that page again (and sometimes do that multiple times)
+- **Done** The number in the main page is over lapping the circles (look screenshot)
+- **Done** When I log a food it doesn’t show I have to click out of the page then click back in for it to update (sometimes I have to do this multiple times) or click on the button that redirects me to that page multiple times
+- **Done** In the Food page be able to save a frequent meal so you can just select it next time

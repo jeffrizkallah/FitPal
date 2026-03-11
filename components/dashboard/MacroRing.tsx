@@ -137,8 +137,30 @@ export default function MacroRing({
           className="absolute inset-0 flex flex-col items-center justify-center"
           style={{ zIndex: 2 }}
         >
-          <p className="text-display font-bold leading-none">{consumed}</p>
-          <p className="text-label text-text-secondary mt-1">of {target} kcal</p>
+          <div style={{ maxWidth: 96, textAlign: "center" }}>
+            <p
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                lineHeight: 1,
+                color: "#2c2c2c",
+              }}
+            >
+              {consumed}
+            </p>
+            <p
+              style={{
+                fontSize: 10,
+                color: "rgba(44,44,44,0.55)",
+                marginTop: 5,
+                letterSpacing: "0.02em",
+                lineHeight: 1.3,
+              }}
+            >
+              / {target} kcal
+            </p>
+          </div>
         </div>
       </div>
 

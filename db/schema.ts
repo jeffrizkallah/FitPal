@@ -194,6 +194,18 @@ export const mealLogs = pgTable("meal_logs", {
   aiRawData:  jsonb("ai_raw_data"),
 });
 
+// ─── Saved Meals (frequent meals for quick logging) ───────
+export const savedMeals = pgTable("saved_meals", {
+  id:        uuid("id").defaultRandom().primaryKey(),
+  userId:    text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name:      text("name").notNull(),
+  calories:  integer("calories").notNull(),
+  proteinG:  real("protein_g").notNull(),
+  carbsG:    real("carbs_g").notNull(),
+  fatG:      real("fat_g").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Daily Summaries (materialized per day) ───────────────
 export const dailySummaries = pgTable("daily_summaries", {
   id:              uuid("id").defaultRandom().primaryKey(),
@@ -230,6 +242,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   workoutPlans:     many(workoutPlans),
   workoutSessions:  many(workoutSessions),
   mealLogs:         many(mealLogs),
+  savedMeals:       many(savedMeals),
   dailySummaries:   many(dailySummaries),
   advisorMessages:  many(advisorMessages),
   gymEquipment:     many(gymEquipment),
