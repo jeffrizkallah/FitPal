@@ -4,7 +4,7 @@ import { advisorMessages } from "@/db/schema";
 import { and, eq, asc, gte } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export const DAILY_MESSAGE_LIMIT = 10;
+const DAILY_MESSAGE_LIMIT = 10;
 
 export async function GET() {
   const session = await auth();
