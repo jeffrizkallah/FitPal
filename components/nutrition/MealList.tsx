@@ -41,6 +41,7 @@ export default function MealList({ meals: initialMeals }: { meals: Meal[] }) {
             carbsG={meal.carbsG}
             fatG={meal.fatG}
             loggedAt={meal.loggedAt}
+            style={{ boxShadow: "none" }}
           />
         </SwipeableRow>
       ))}
@@ -85,48 +86,64 @@ function SwipeableRow({
   }
 
   return (
-    <div style={{ position: "relative" }}>
-      {/* Delete zone — revealed as card slides left */}
+    // Outer div: owns the neumorphic shadow, not clipped
+    <div
+      style={{
+        position: "relative",
+        borderRadius: "1.5rem",
+        boxShadow:
+          "8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light)",
+      }}
+    >
+      {/* Inner div: clips card + delete zone to the same rounded rect */}
       <div
         style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: DELETE_WIDTH,
-          backgroundColor: "#FF3B30",
-          borderRadius: "0 1.5rem 1.5rem 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-        }}
-        onClick={onDelete}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M3 6H5H21M8 6V4C8 3.47 8.21 2.96 8.59 2.59C8.96 2.21 9.47 2 10 2H14C14.53 2 15.04 2.21 15.41 2.59C15.79 2.96 16 3.47 16 4V6M19 6V20C19 20.53 18.79 21.04 18.41 21.41C18.04 21.79 17.53 22 17 22H7C6.47 22 5.96 21.79 5.59 21.41C5.21 21.04 5 20.53 5 20V6H19Z"
-            stroke="white"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-
-      {/* Card — slides left on swipe */}
-      <div
-        style={{
-          transform: `translateX(${offset}px)`,
-          transition: isDragging ? "none" : "transform 0.25s ease-out",
           position: "relative",
-          zIndex: 1,
+          borderRadius: "1.5rem",
+          overflow: "hidden",
         }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
       >
-        {children}
+        {/* Delete zone — revealed as card slides left */}
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: DELETE_WIDTH,
+            backgroundColor: "#FF3B30",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+          onClick={onDelete}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 6H5H21M8 6V4C8 3.47 8.21 2.96 8.59 2.59C8.96 2.21 9.47 2 10 2H14C14.53 2 15.04 2.21 15.41 2.59C15.79 2.96 16 3.47 16 4V6M19 6V20C19 20.53 18.79 21.04 18.41 21.41C18.04 21.79 17.53 22 17 22H7C6.47 22 5.96 21.79 5.59 21.41C5.21 21.04 5 20.53 5 20V6H19Z"
+              stroke="white"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* Card — slides left on swipe */}
+        <div
+          style={{
+            transform: `translateX(${offset}px)`,
+            transition: isDragging ? "none" : "transform 0.25s ease-out",
+            position: "relative",
+            zIndex: 1,
+          }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -68,6 +68,7 @@ export default function NutritionLogPage() {
   const [saveAsFavorite, setSaveAsFavorite] = useState(false);
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [fromSavedMeal, setFromSavedMeal] = useState(false);
 
   // ── Load saved meals ───────────────────────────────────────
   useEffect(() => {
@@ -182,7 +183,42 @@ export default function NutritionLogPage() {
       fatG: String(meal.fatG),
       refinement: "",
     });
+    setFromSavedMeal(true);
     setStep("confirm");
+  }
+
+  // ── Re-analyze with context (works with or without image) ─
+  async function reanalyzeWithContext() {
+    if (imageBase64) {
+      analyze(form.refinement);
+      return;
+    }
+    // No image — re-estimate via text with meal name + refinement
+    setIsEstimating(true);
+    setError(null);
+    try {
+      const description = `${form.name}, ${form.refinement}`;
+      const res = await fetch("/api/nutrition/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      if (!res.ok) throw new Error("Estimation failed");
+      const data = await res.json();
+      setForm({
+        name: data.name ?? form.name,
+        mealType: data.mealType ?? form.mealType,
+        calories: String(data.calories ?? ""),
+        proteinG: String(data.proteinG ?? ""),
+        carbsG: String(data.carbsG ?? ""),
+        fatG: String(data.fatG ?? ""),
+        refinement: "",
+      });
+    } catch {
+      setError("Could not re-estimate macros. Please adjust manually.");
+    } finally {
+      setIsEstimating(false);
+    }
   }
 
   // ── Delete a saved meal ───────────────────────────────────
@@ -252,6 +288,7 @@ export default function NutritionLogPage() {
           if (step === "confirm") {
             setStep("camera");
             setMode("photo");
+            setFromSavedMeal(false);
           } else {
             router.back();
           }
@@ -706,8 +743,8 @@ export default function NutritionLogPage() {
             </div>
           </div>
 
-          {/* Refinement (photo mode only) */}
-          {mode === "photo" && (
+          {/* Refinement (photo mode or saved meal) */}
+          {(mode === "photo" || fromSavedMeal) && (
             <div className="mb-4">
               <p className="section-label mb-2">Refine (optional)</p>
               <input
@@ -765,13 +802,13 @@ export default function NutritionLogPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3" style={{ marginTop: mode === "text" ? "0" : 0 }}>
-            {mode === "photo" && form.refinement && (
+            {(mode === "photo" || fromSavedMeal) && form.refinement && (
               <button
-                onClick={() => analyze(form.refinement)}
+                onClick={reanalyzeWithContext}
                 className="btn-ghost w-full"
-                disabled={step === "saving"}
+                disabled={step === "saving" || isEstimating}
               >
-                Re-analyze with Context
+                {isEstimating ? "Updating..." : "Re-analyze with Context"}
               </button>
             )}
 

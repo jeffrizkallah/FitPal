@@ -1,17 +1,17 @@
 "use client";
 
-const SIZE = 220;
+const SIZE = 260;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
-const GROOVE = 12;         // Groove channel width (px)
-const ARC_W  = GROOVE - 4; // Progress arc (8px) — sits inside the groove
+const GROOVE = 13;         // Groove channel width (px)
+const ARC_W  = GROOVE - 4; // Progress arc (9px) — sits inside the groove
 
 // Three rings: outer → calories, middle → protein, inner → carbs
 // Radii spaced so grooves have ~7px gaps between each other
 const RINGS = [
-  { macro: "calories", color: "#007AFF", r: 100 },
-  { macro: "protein",  color: "#34C759", r: 81  },
-  { macro: "carbs",    color: "#FF9500", r: 62  },
+  { macro: "calories", color: "#007AFF", r: 118 },
+  { macro: "protein",  color: "#34C759", r: 96  },
+  { macro: "carbs",    color: "#FF9500", r: 74  },
 ] as const;
 
 function arc(r: number, pct: number) {
@@ -50,11 +50,10 @@ export default function MacroRing({
 
   return (
     <div
-      className="flex flex-col items-center mb-8 rounded-4xl px-6 py-8 mx-auto"
+      className="flex flex-col items-center mb-8 rounded-4xl px-6 py-8"
       style={{
         backgroundColor: "var(--neuo-bg)",
         boxShadow: "8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light)",
-        maxWidth: "300px",
         width: "100%",
       }}
     >
@@ -137,10 +136,10 @@ export default function MacroRing({
           className="absolute inset-0 flex flex-col items-center justify-center"
           style={{ zIndex: 2 }}
         >
-          <div style={{ maxWidth: 96, textAlign: "center" }}>
+          <div style={{ maxWidth: 110, textAlign: "center" }}>
             <p
               style={{
-                fontSize: 30,
+                fontSize: 36,
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
                 lineHeight: 1,
@@ -151,7 +150,7 @@ export default function MacroRing({
             </p>
             <p
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 color: "rgba(44,44,44,0.55)",
                 marginTop: 5,
                 letterSpacing: "0.02em",

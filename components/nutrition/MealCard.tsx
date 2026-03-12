@@ -6,6 +6,7 @@ interface MealCardProps {
   carbsG: number;
   fatG: number;
   loggedAt: Date | string;
+  style?: React.CSSProperties;
 }
 
 const mealTypeLabels: Record<string, string> = {
@@ -28,11 +29,12 @@ export default function MealCard({
   carbsG,
   fatG,
   loggedAt,
+  style,
 }: MealCardProps) {
   return (
     <div
       className="neuo-card px-5 py-4"
-      style={{ borderRadius: "1.5rem" }}
+      style={{ borderRadius: "1.5rem", ...style }}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
