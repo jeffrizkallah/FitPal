@@ -228,6 +228,18 @@ export const gymEquipment = pgTable("gym_equipment", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Exercise Day Logs (per-day completion + weight, synced to DB) ────────────
+export const exerciseDayLogs = pgTable("exercise_day_logs", {
+  id:             uuid("id").defaultRandom().primaryKey(),
+  userId:         text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planExId:       uuid("plan_ex_id").notNull().references(() => planExercises.id, { onDelete: "cascade" }),
+  exerciseId:     uuid("exercise_id").notNull().references(() => exercises.id),
+  date:           text("date").notNull(),          // "YYYY-MM-DD"
+  completed:      boolean("completed").notNull().default(false),
+  completedSets:  jsonb("completed_sets").$type<boolean[]>(),
+  weightKg:       real("weight_kg"),
+});
+
 // ─── Advisor Messages ─────────────────────────────────────
 export const advisorMessages = pgTable("advisor_messages", {
   id:        uuid("id").defaultRandom().primaryKey(),

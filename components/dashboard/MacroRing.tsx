@@ -50,10 +50,11 @@ export default function MacroRing({
 
   return (
     <div
-      className="flex flex-col items-center mb-8 rounded-4xl px-6 py-8"
+      className="flex flex-col items-center mb-8 rounded-4xl px-6 py-8 mx-auto"
       style={{
         backgroundColor: "var(--neuo-bg)",
         boxShadow: "8px 8px 16px var(--neuo-dark), -8px -8px 16px var(--neuo-light)",
+        maxWidth: "300px",
         width: "100%",
       }}
     >

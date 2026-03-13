@@ -1,7 +1,7 @@
 # Forma — Project Progress
 
 > Stack: Next.js · Tailwind · Neon DB · Multimodal AI (Vision + Text)
-> Last Updated: 2026-03-11 (Phase 4: fixed stale data (PageRefresher refreshes on mount + force-dynamic on nutrition page + router.refresh() after save), fixed macro ring number overlapping circles (reduced font size + max-width constraint), added saved/frequent meals feature (savedMeals DB table, /api/nutrition/saved routes, saved meal quick-select + delete on log page, save-as-frequent toggle on confirm step). Advisor: daily chat reset (messages filtered to today in GET + Claude context), 10 msg/day rate limit with 429 guard, remaining count + limit banner in UI)
+> Last Updated: 2026-03-13 (Bug fix: workout completion checkmarks and per-exercise weights were only stored in localStorage — cleared on browser eviction or new device. Added exercise_day_logs DB table + /api/workouts/day-log route. WeeklyPlanView now seeds from localStorage on first paint then overwrites from DB (source of truth). Writes sync to DB on every toggle/weight save. lastWeights now pulled from DB history so weights persist across days.)
 
 ---
 
@@ -44,8 +44,8 @@
 | Exercise library (seeded in Neon DB) | ✅ | 32 exercises across all muscle groups. Run: npm run db:seed. No video assets yet (Phase 6). |
 | Workout plan builder (AI-generated or manual) | ✅ | /workout/plan/new — exercise picker + sets/reps editor + day-of-week assignment (M-S buttons). |
 | Weekly Train view — day accordion | ✅ | /workout — 7 day pills, expand day → see exercises. Tap circle to complete (localStorage). Chevron shows muscle SVG + instructions. Day pills show checkmark when all exercises complete. |
-| Exercise completion (tap-to-done) | ✅ | Per-day localStorage key. Set buttons in expanded panel (N buttons per exercise) auto-mark exercise done when all sets tapped. Manual circle toggle still works. |
-| Per-exercise weight tracking | ✅ | Weight input in expanded panel. Saves to localStorage per exercise. Shows previous session's weight as hint and delta vs last. |
+| Exercise completion (tap-to-done) | ✅ | DB-backed via exercise_day_logs. localStorage used as optimistic cache. Set buttons auto-mark exercise done when all sets tapped. Manual circle toggle still works. |
+| Per-exercise weight tracking | ✅ | DB-backed via exercise_day_logs. Weight persists across days (pre-populated from last session). Shows delta vs last weight. |
 | Elapsed stopwatch in active workout | ✅ | Neuo pill stopwatch in top-right of ActiveWorkout header. Counts up from session startedAt. |
 | Train page title cleanup | ✅ | Plan name shown as small subtitle under "This Week". No more crowded double-heading. |
 | Muscle diagram SVGs per exercise | ✅ | Inline SVG human silhouette with highlighted region per muscle group (WeeklyPlanView component). |

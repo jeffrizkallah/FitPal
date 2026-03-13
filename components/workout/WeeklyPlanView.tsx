@@ -65,7 +65,6 @@ const DEFAULT_INSTRUCTIONS: Record<string, string> = {
     "Maintain proper form throughout every component. Rest as needed between movements.",
 };
 
-// ─── Muscle SVG ───────────────────────────────────────────────────────────────
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getTodayIndex() {
   const js = new Date().getDay();
@@ -79,24 +78,53 @@ function getISOWeek(d: Date): number {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-// Weekly keys — completion persists for the whole week, resets on new week
+/** Returns the Monday of the ISO week containing d, as "YYYY-MM-DD" */
+function isoWeekMonday(d: Date): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7; // make Sunday = 7
+  date.setUTCDate(date.getUTCDate() - (day - 1));
+  return date.toISOString().split("T")[0];
+}
+
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+// localStorage fallback keys (still used as optimistic cache)
 function weekDoneKey() {
   const d = new Date();
   return `forma-done-${d.getFullYear()}-w${getISOWeek(d)}`;
 }
-
 function weekSetsKey() {
   const d = new Date();
   return `forma-sets-${d.getFullYear()}-w${getISOWeek(d)}`;
 }
-
 function lastWeightKey(exerciseId: string) {
   return `forma-last-weight-${exerciseId}`;
 }
-
 function todayWeightKey(exerciseId: string) {
   const d = new Date();
   return `forma-weight-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}-${exerciseId}`;
+}
+
+// ─── DB sync helpers ──────────────────────────────────────────────────────────
+async function syncExerciseLog(payload: {
+  planExId: string;
+  exerciseId: string;
+  date: string;
+  completed: boolean;
+  completedSets: boolean[];
+  weightKg: number | null;
+}) {
+  try {
+    await fetch("/api/workouts/day-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // silently fail — localStorage is still the optimistic cache
+  }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -110,7 +138,11 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
   const [lastWeights, setLastWeights] = useState<Record<string, string>>({});
   const quickLoggedRef = useRef(false);
 
+  // ── Load state: DB is source of truth, localStorage is the warm cache ───────
   useEffect(() => {
+    const weekStart = isoWeekMonday(new Date());
+
+    // 1. Seed from localStorage immediately so the UI isn't blank on first paint
     try {
       const raw = localStorage.getItem(weekDoneKey());
       if (raw) setDone(new Set(JSON.parse(raw) as string[]));
@@ -122,14 +154,80 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
       const lastWeightsObj: Record<string, string> = {};
       exercises.forEach((ex) => {
         const todayW = localStorage.getItem(todayWeightKey(ex.exerciseId));
-        if (todayW) weightsObj[ex.exerciseId] = todayW;
         const lastW = localStorage.getItem(lastWeightKey(ex.exerciseId));
+        // Pre-populate input with last known weight if nothing entered today
+        if (todayW) weightsObj[ex.exerciseId] = todayW;
+        else if (lastW) weightsObj[ex.exerciseId] = lastW;
         if (lastW) lastWeightsObj[ex.exerciseId] = lastW;
       });
       setWeights(weightsObj);
       setLastWeights(lastWeightsObj);
     } catch {}
-  }, [exercises]);
+
+    // 2. Fetch from DB and overwrite (DB is authoritative)
+    fetch(`/api/workouts/day-log?weekStart=${weekStart}`)
+      .then((r) => r.json())
+      .then((data: {
+        weekLogs: Array<{
+          planExId: string;
+          exerciseId: string;
+          date: string;
+          completed: boolean;
+          completedSets: boolean[] | null;
+          weightKg: number | null;
+        }>;
+        lastWeightMap: Record<string, number>;
+      }) => {
+        if (!data.weekLogs) return;
+
+        const newDone = new Set<string>();
+        const newSets: Record<string, boolean[]> = {};
+        const newWeights: Record<string, string> = {};
+        const newLastWeights: Record<string, string> = {};
+
+        // Populate last weights from DB history
+        for (const [exId, kg] of Object.entries(data.lastWeightMap)) {
+          newLastWeights[exId] = String(kg);
+        }
+
+        // Populate this week's logs
+        for (const log of data.weekLogs) {
+          if (log.completed) newDone.add(log.planExId);
+          if (log.completedSets) newSets[log.planExId] = log.completedSets;
+          if (log.weightKg != null) {
+            newWeights[log.exerciseId] = String(log.weightKg);
+            newLastWeights[log.exerciseId] = String(log.weightKg);
+          }
+        }
+
+        // For exercises with no weight this week, fall back to lastWeight
+        exercises.forEach((ex) => {
+          if (!newWeights[ex.exerciseId] && newLastWeights[ex.exerciseId]) {
+            newWeights[ex.exerciseId] = newLastWeights[ex.exerciseId];
+          }
+        });
+
+        setDone(newDone);
+        setCompletedSets(newSets);
+        setWeights(newWeights);
+        setLastWeights(newLastWeights);
+
+        // Mirror back to localStorage so next paint is instant
+        try {
+          localStorage.setItem(weekDoneKey(), JSON.stringify([...newDone]));
+          localStorage.setItem(weekSetsKey(), JSON.stringify(newSets));
+          exercises.forEach((ex) => {
+            if (newWeights[ex.exerciseId]) {
+              localStorage.setItem(todayWeightKey(ex.exerciseId), newWeights[ex.exerciseId]);
+            }
+            if (newLastWeights[ex.exerciseId]) {
+              localStorage.setItem(lastWeightKey(ex.exerciseId), newLastWeights[ex.exerciseId]);
+            }
+          });
+        } catch {}
+      })
+      .catch(() => {});
+  }, [exercises]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fire quick-log when today's workout becomes fully complete
   const todayExercises = exercises.filter((e) => e.dayOfWeek === todayIdx);
@@ -148,17 +246,29 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
     }
   }, [done, todayExercises, planId]);
 
-  function toggleDone(planExId: string) {
+  function toggleDone(planExId: string, exerciseId: string) {
     setDone((prev) => {
       const next = new Set(prev);
       if (next.has(planExId)) next.delete(planExId);
       else next.add(planExId);
       try { localStorage.setItem(weekDoneKey(), JSON.stringify([...next])); } catch {}
+
+      const isNowComplete = next.has(planExId);
+      const exSets = completedSets[planExId] ?? [];
+      syncExerciseLog({
+        planExId,
+        exerciseId,
+        date: todayStr(),
+        completed: isNowComplete,
+        completedSets: exSets,
+        weightKg: weights[exerciseId] ? parseFloat(weights[exerciseId]) : null,
+      });
+
       return next;
     });
   }
 
-  function toggleSet(planExId: string, setIdx: number, totalSets: number) {
+  function toggleSet(planExId: string, exerciseId: string, setIdx: number, totalSets: number) {
     setCompletedSets((prev) => {
       const prevArr = prev[planExId] ?? Array(totalSets).fill(false);
       const newArr = [...prevArr];
@@ -173,6 +283,16 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
         if (allDone) newDone.add(planExId);
         else newDone.delete(planExId);
         try { localStorage.setItem(weekDoneKey(), JSON.stringify([...newDone])); } catch {}
+
+        syncExerciseLog({
+          planExId,
+          exerciseId,
+          date: todayStr(),
+          completed: allDone,
+          completedSets: newArr,
+          weightKg: weights[exerciseId] ? parseFloat(weights[exerciseId]) : null,
+        });
+
         return newDone;
       });
 
@@ -184,13 +304,24 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
     setWeights((prev) => ({ ...prev, [exerciseId]: value }));
   }
 
-  function saveWeight(exerciseId: string, value: string) {
+  function saveWeight(planExId: string, exerciseId: string, value: string) {
     if (value.trim()) {
       try {
         localStorage.setItem(todayWeightKey(exerciseId), value);
         localStorage.setItem(lastWeightKey(exerciseId), value);
       } catch {}
       setLastWeights((prev) => ({ ...prev, [exerciseId]: value }));
+
+      const isComplete = done.has(planExId);
+      const exSets = completedSets[planExId] ?? [];
+      syncExerciseLog({
+        planExId,
+        exerciseId,
+        date: todayStr(),
+        completed: isComplete,
+        completedSets: exSets,
+        weightKg: parseFloat(value),
+      });
     }
   }
 
@@ -336,7 +467,7 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
                   <div className="flex items-center gap-4 px-5 py-4">
                     {/* Completion circle */}
                     <button
-                      onClick={() => toggleDone(ex.planExId)}
+                      onClick={() => toggleDone(ex.planExId, ex.exerciseId)}
                       className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 appearance-none ${
                         isDone ? "bg-action" : "bg-neuo-bg shadow-neuo-sm"
                       }`}
@@ -450,7 +581,7 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
                         }}
                       />
 
-                      {/* Sets + weight — Option B: chips row + shared weight */}
+                      {/* Sets + weight */}
                       <div className="p-4 flex flex-col gap-5">
                         {/* Set chips */}
                         <div>
@@ -461,7 +592,7 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
                               return (
                                 <button
                                   key={i}
-                                  onClick={() => toggleSet(ex.planExId, i, ex.targetSets)}
+                                  onClick={() => toggleSet(ex.planExId, ex.exerciseId, i, ex.targetSets)}
                                   className="flex flex-col items-center gap-1.5 appearance-none"
                                 >
                                   <div
@@ -537,7 +668,7 @@ export default function WeeklyPlanView({ exercises, planId }: Props) {
                               placeholder={exLastWeight ?? "—"}
                               value={exWeight}
                               onChange={(e) => updateWeight(ex.exerciseId, e.target.value)}
-                              onBlur={(e) => saveWeight(ex.exerciseId, e.target.value)}
+                              onBlur={(e) => saveWeight(ex.planExId, ex.exerciseId, e.target.value)}
                               min={0}
                               step={0.5}
                               inputMode="decimal"
